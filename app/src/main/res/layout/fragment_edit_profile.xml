@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp"
+    tools:context="metro.plascreem.EditProfileFragment">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Ingresar / Actualizar Datos de Enlace"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="#303F9F"
+            android:layout_marginBottom="20dp"/>
+
+        <!-- Nombre y Apellidos -->
+        <EditText
+            android:id="@+id/et_nombre"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Nombre(s)"
+            android:inputType="textPersonName|textCapWords"
+            android:layout_marginBottom="12dp"/>
+
+        <EditText
+            android:id="@+id/et_apellido_paterno"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Apellido Paterno"
+            android:inputType="textPersonName|textCapWords"
+            android:layout_marginBottom="12dp"/>
+
+        <EditText
+            android:id="@+id/et_apellido_materno"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Apellido Materno"
+            android:inputType="textPersonName|textCapWords"
+            android:layout_marginBottom="20dp"/>
+
+        <!-- Datos del Puesto/Organización -->
+        <EditText
+            android:id="@+id/et_expediente"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Número de Expediente"
+            android:inputType="text"
+            android:textColor="@android:color/black"
+            android:layout_marginBottom="12dp"/>
+
+        <EditText
+            android:id="@+id/et_taller"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Taller"
+            android:inputType="textCapWords"
+            android:layout_marginBottom="12dp"/>
+
+        <EditText
+            android:id="@+id/et_enlace_origen"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="De qué Enlace viene"
+            android:inputType="textCapWords"
+            android:layout_marginBottom="12dp"/>
+
+        <EditText
+            android:id="@+id/et_horario"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Horario"
+            android:inputType="text"
+            android:layout_marginBottom="30dp"/>
+
+        <!-- Botón de Guardar -->
+        <Button
+            android:id="@+id/btn_guardar_perfil"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Guardar Información"
+            android:backgroundTint="#4CAF50"/>
+
+    </LinearLayout>
+</ScrollView>

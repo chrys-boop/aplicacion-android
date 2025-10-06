@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">splascreem</string>
+    <string name="capacitacion_metro">logo</string>
+    <string name="btn_administrador">Administrador</string>
+    <string name="btn_trabajadores">Trabajadores</string>
+    <string name="btn_personal">Personal Capacitacion</string>
+    <string name="btn_estudiantes">Enlaces Capacitacion</string>
+    <string name="et_username">Número de Expediente</string>
+    <string name="et_password">Contraseña</string>
+    <string name="btn_login">Iniciar sesión</string>
+    <string name="btn_enlaces">Enlaces</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+
+
+</resources>

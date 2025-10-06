@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="@android:color/white"
+    tools:context=".UpdateDataFragment">
+
+    <!-- Título principal -->
+    <TextView
+        android:id="@+id/tv_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Actualización de Plantillas e Históricos"
+        android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
+        android:textColor="?attr/colorPrimary"
+        android:gravity="center"
+        android:layout_marginBottom="16dp"
+        android:contentDescription="Título de la pantalla de actualización"/>
+
+    <!-- Botón de actualización de plantillas -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_actualizar_plantillas"
+        style="@style/Widget.MaterialComponents.Button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Actualizar y Sincronizar Plantillas"
+        android:contentDescription="Botón para actualizar plantillas"
+        app:cornerRadius="16dp"
+        app:icon="@android:drawable/ic_popup_sync"
+        app:iconGravity="textStart"
+        app:iconPadding="12dp"
+        android:textColor="@android:color/white"
+        app:backgroundTint="?attr/colorPrimary"
+        android:layout_marginTop="16dp"/>
+
+    <!-- Descripción de acción de plantillas -->
+    <TextView
+        android:id="@+id/tv_desc_plantillas"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Esta acción actualizará tus plantillas de datos de forma individual."
+        android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+        android:textColor="?attr/colorOnSurface"
+        android:layout_marginTop="8dp"
+        android:contentDescription="Descripción de la acción de actualización"/>
+
+    <!-- Botón de confirmación histórica -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_confirmar_historicos"
+        style="@style/Widget.MaterialComponents.Button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Confirmar Información Histórica"
+        android:contentDescription="Botón para confirmar datos históricos"
+        app:cornerRadius="16dp"
+        app:icon="@android:drawable/ic_menu_info_details"
+        app:iconGravity="textStart"
+        app:iconPadding="12dp"
+        android:textColor="@android:color/white"
+        app:backgroundTint="?attr/colorPrimary"
+        android:layout_marginTop="24dp"/>
+
+    <!-- Descripción de acción histórica -->
+    <TextView
+        android:id="@+id/tv_desc_historicos"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Permite revisar y confirmar los datos históricos ya cargados."
+        android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+        android:textColor="?attr/colorOnSurface"
+        android:layout_marginTop="8dp"
+        android:contentDescription="Descripción de la acción histórica"/>
+
+</LinearLayout>
