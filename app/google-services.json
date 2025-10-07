@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "678375493549",
+    "project_id": "capacitacion-material",
+    "storage_bucket": "capacitacion-material.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:678375493549:android:7139b11024790189745b24",
+        "android_client_info": {
+          "package_name": "metro.plascreem"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC1BqUUHZUE_DUaFHmtUGVSx9W4Yv2ESFk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
