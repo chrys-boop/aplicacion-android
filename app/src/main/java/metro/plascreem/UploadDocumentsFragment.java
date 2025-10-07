@@ -1,6 +1,5 @@
 package metro.plascreem;
 
-import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -12,6 +11,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
+import com.google.firebase.auth.FirebaseAuth;
+
 import metro.plascreem.databinding.FragmentUploadDocumentsBinding;
 import static android.app.Activity.RESULT_OK;
 
@@ -22,6 +23,8 @@ public class UploadDocumentsFragment extends Fragment {
 
     private FragmentUploadDocumentsBinding binding;
     private Uri selectedFileUri = null; // URI del archivo seleccionado
+    private DatabaseManager databaseManager;
+
 
     public UploadDocumentsFragment() {}
 
@@ -30,6 +33,7 @@ public class UploadDocumentsFragment extends Fragment {
                              Bundle savedInstanceState) {
         // Usar View Binding para inflar el layout
         binding = FragmentUploadDocumentsBinding.inflate(inflater, container, false);
+        databaseManager = new DatabaseManager();
         return binding.getRoot();
     }
 
@@ -54,7 +58,7 @@ public class UploadDocumentsFragment extends Fragment {
 
         // Al inicio, forzamos la apertura del selector
         if (selectedFileUri == null) {
-           // openFileSelector();
+            // openFileSelector();
         }
     }
 
@@ -83,18 +87,38 @@ public class UploadDocumentsFragment extends Fragment {
         binding.tvFileStatus.setText("Subiendo archivo...");
         binding.btnSubirDocumento.setEnabled(false);
 
-        // 2. TODO: LÓGICA DE CONEXIÓN REAL A SUPABASE/FIREBASE AQUÍ
-        // Usar 'fileUri' para leer el archivo y subirlo.
+        String fileName = selectedFileUri.getLastPathSegment();
+        databaseManager.uploadFile(fileUri, fileName, new DatabaseManager.UploadListener() {
+            @Override
+            public void onSuccess(String downloadUrl) {
+                long fileSize = 1024; // You can get the file size here
+                String uploaderId = FirebaseAuth.getInstance().getCurrentUser().getUid();
+                databaseManager.saveFileMetadata(fileName, downloadUrl, fileSize, uploaderId, new DatabaseManager.DataSaveListener() {
+                    @Override
+                    public void onSuccess() {
+                        Toast.makeText(getContext(), "Documento subido con éxito.", Toast.LENGTH_SHORT).show();
+                        getParentFragmentManager().popBackStack(); // Volver al Calendario
+                    }
 
-        // Simulación de subida (Después de 3 segundos):
-        Toast.makeText(getContext(), "Subida iniciada para: " + fileUri.getLastPathSegment(), Toast.LENGTH_LONG).show();
+                    @Override
+                    public void onFailure(String message) {
+                        Toast.makeText(getContext(), "Error al guardar los metadatos: " + message, Toast.LENGTH_LONG).show();
+                        resetUploadState();
+                    }
+                });
+            }
 
-        // Tras la subida exitosa:
-        // Toast.makeText(getContext(), "Documento subido con éxito.", Toast.LENGTH_SHORT).show();
-        // getParentFragmentManager().popBackStack(); // Volver al Calendario
+            @Override
+            public void onFailure(String message) {
+                Toast.makeText(getContext(), "Error al subir el archivo: " + message, Toast.LENGTH_LONG).show();
+                resetUploadState();
+            }
 
-        // Simulación de reset después de una subida (quitar esto en la versión final)
-        resetUploadState();
+            @Override
+            public void onProgress(double progress) {
+                binding.tvFileStatus.setText(String.format("Subiendo... %.2f%%", progress));
+            }
+        });
 
     }
 

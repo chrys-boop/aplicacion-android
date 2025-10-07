@@ -11,6 +11,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
+import com.google.firebase.auth.FirebaseAuth;
+
 import metro.plascreem.databinding.FragmentUploadMediaBinding; // Usaremos esta clase
 import static android.app.Activity.RESULT_OK;
 
@@ -19,6 +21,7 @@ public class UploadMediaFragment extends Fragment {
     private static final int PICK_MEDIA_REQUEST = 2;
     private FragmentUploadMediaBinding binding; // Variable de View Binding
     private Uri selectedFileUri = null; // URI del archivo seleccionado
+    private DatabaseManager databaseManager;
 
     public UploadMediaFragment() {}
 
@@ -27,6 +30,7 @@ public class UploadMediaFragment extends Fragment {
                              Bundle savedInstanceState) {
         // Usar View Binding para inflar el layout
         binding = FragmentUploadMediaBinding.inflate(inflater, container, false);
+        databaseManager = new DatabaseManager();
         return binding.getRoot();
     }
 
@@ -78,14 +82,38 @@ public class UploadMediaFragment extends Fragment {
         binding.tvMediaStatus.setText("Subiendo archivo multimedia...");
         binding.btnSubirMedia.setEnabled(false);
 
-        // 2. TODO: LÓGICA DE CONEXIÓN REAL A SUPABASE/FIREBASE AQUÍ
-        Toast.makeText(getContext(), "Subida iniciada para: " + fileUri.getLastPathSegment(), Toast.LENGTH_LONG).show();
+        String fileName = selectedFileUri.getLastPathSegment();
+        databaseManager.uploadMediaFile(fileUri, fileName, new DatabaseManager.UploadListener() {
+            @Override
+            public void onSuccess(String downloadUrl) {
+                long fileSize = 1024; // You can get the file size here
+                String uploaderId = FirebaseAuth.getInstance().getCurrentUser().getUid();
+                databaseManager.saveFileMetadata(fileName, downloadUrl, fileSize, uploaderId, new DatabaseManager.DataSaveListener() {
+                    @Override
+                    public void onSuccess() {
+                        Toast.makeText(getContext(), "Multimedia subido con éxito.", Toast.LENGTH_SHORT).show();
+                        getParentFragmentManager().popBackStack(); // Volver al Calendario
+                    }
 
-        // Tras la subida exitosa:
-        // getParentFragmentManager().popBackStack(); // Volver al Calendario
+                    @Override
+                    public void onFailure(String message) {
+                        Toast.makeText(getContext(), "Error al guardar los metadatos: " + message, Toast.LENGTH_LONG).show();
+                        resetUploadState();
+                    }
+                });
+            }
 
-        // Simulación de reset después de una subida (quitar esto en la versión final)
-        resetUploadState();
+            @Override
+            public void onFailure(String message) {
+                Toast.makeText(getContext(), "Error al subir el multimedia: " + message, Toast.LENGTH_LONG).show();
+                resetUploadState();
+            }
+
+            @Override
+            public void onProgress(double progress) {
+                binding.tvMediaStatus.setText(String.format("Subiendo... %.2f%%", progress));
+            }
+        });
     }
 
     /**

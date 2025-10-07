@@ -11,28 +11,32 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
+import java.util.Map;
 
-// Importamos la clase de vinculación generada automáticamente
 import metro.plascreem.databinding.FragmentCalendarBinding;
 
-// IMPLEMENTACIÓN CLAVE: El fragmento implementa la interfaz del adaptador para manejar los clics.
 public class CalendarFragment extends Fragment
         implements EventosAdapter.EventoActionListener {
 
     private FragmentCalendarBinding binding;
     private EventosAdapter eventosAdapter;
     private final List<Evento> eventosDelDia = new ArrayList<>();
+    private DatabaseManager databaseManager;
+    private String userRole;
 
     public CalendarFragment() {}
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        // Uso de View Binding
         binding = FragmentCalendarBinding.inflate(inflater, container, false);
+        databaseManager = new DatabaseManager();
         return binding.getRoot();
     }
 
@@ -40,79 +44,86 @@ public class CalendarFragment extends Fragment
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // 1. Configurar RecyclerView: ... (Esto es correcto)
         eventosAdapter = new EventosAdapter(eventosDelDia, this);
         binding.rvEventosDia.setLayoutManager(new LinearLayoutManager(getContext()));
         binding.rvEventosDia.setAdapter(eventosAdapter);
 
-
-        // **¡NUEVO!** Deshabilitar el scroll interno del RecyclerView
         binding.rvEventosDia.setNestedScrollingEnabled(false);
 
-        // 2. Manejo de la selección del día (esto es correcto)
         binding.calendarView.setOnDateChangeListener((view1, year, month, dayOfMonth) -> {
-            // ... (tu código para loadEventsForDate(selectedDate);)
             String selectedDate = String.format("%d-%02d-%02d", year, month + 1, dayOfMonth);
             binding.tvEventosHeader.setText("Eventos para el: " + dayOfMonth + "/" + (month + 1) + "/" + year);
             loadEventsForDate(selectedDate);
         });
 
-        // 3. Carga inicial de eventos (AJUSTE AQUÍ)
+        // Carga inicial de eventos
         Calendar today = Calendar.getInstance();
-        int currentDay = today.get(Calendar.DAY_OF_MONTH);
-        int currentMonth = today.get(Calendar.MONTH) + 1;
-        int currentYear = today.get(Calendar.YEAR);
-
-        String initialDate;
-
-        // Si hoy no es el día 5 o 10, forzamos la carga del día 5 para que la lista aparezca al inicio
-        if (currentDay != 5 && currentDay != 10) {
-            // Forzamos la fecha al día 5 del mes actual
-            initialDate = String.format("%d-%02d-05", currentYear, currentMonth);
-            binding.calendarView.setDate(today.getTimeInMillis()); // Aseguramos que el calendario apunte a hoy
-        } else {
-            initialDate = String.format("%d-%02d-%02d", currentYear, currentMonth, currentDay);
-        }
-
-        // Mostramos la lista inicial (día 5 si no hay eventos hoy)
+        String initialDate = String.format("%d-%02d-%02d", today.get(Calendar.YEAR), today.get(Calendar.MONTH) + 1, today.get(Calendar.DAY_OF_MONTH));
         loadEventsForDate(initialDate);
 
-        // 4. FAB ... (esto es correcto)
+        // Configurar el botón flotante (FAB)
+        binding.fabAddEvento.setOnClickListener(v -> handleFabClick());
+
+        // Obtener el rol del usuario actual
+        loadUserRole();
     }
 
-    // --- Lógica de Simulación de Carga de Datos ---
+    private void loadUserRole() {
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser != null) {
+            databaseManager.getUserDataMap(currentUser.getUid(), new DatabaseManager.UserDataMapListener() {
+                @Override
+                public void onDataReceived(Map<String, Object> userData) {
+                    userRole = (String) userData.get("userType");
+                    // Mostrar u ocultar el FAB según el rol
+                    if ("Administrador".equals(userRole) || "Personal_Administrativo".equals(userRole)) {
+                        binding.fabAddEvento.setVisibility(View.VISIBLE);
+                    } else {
+                        binding.fabAddEvento.setVisibility(View.GONE);
+                    }
+                }
+
+                @Override
+                public void onDataCancelled(String message) {
+                    // Ocultar el FAB si no se puede obtener el rol
+                    binding.fabAddEvento.setVisibility(View.GONE);
+                }
+            });
+        }
+    }
+
+    private void handleFabClick() {
+        if ("Administrador".equals(userRole) || "Personal_Administrativo".equals(userRole)) {
+            getParentFragmentManager().beginTransaction()
+                    .replace(R.id.fragment_container, new CreateEventFragment())
+                    .addToBackStack(null)
+                    .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
+                    .commit();
+        } else {
+            Toast.makeText(getContext(), "No tienes permiso para crear eventos.", Toast.LENGTH_SHORT).show();
+        }
+    }
+
     private void loadEventsForDate(String date) {
-        // En un proyecto real, aquí harías una llamada a Supabase/Firebase con la 'date'
-        List<Evento> mockEvents = new ArrayList<>();
+        databaseManager.getEventsForDate(date, new DatabaseManager.EventsListener() {
+            @Override
+            public void onEventsReceived(List<Evento> events) {
+                eventosAdapter.setEventos(events);
+                showEmptyState(events.isEmpty());
+            }
 
-        // Simulación: Si es el día 5 o 10 del mes, hay eventos
-        if (date.endsWith("-05")) {
-            // Evento que requiere subir un documento
-            mockEvents.add(new Evento("e1", "Subir Informe Trimestral", "Requerido por Dirección.", date, Evento.TIPO_DOCUMENTO));
-            // Evento simple, sin botón de acción
-            mockEvents.add(new Evento("e2", "Reunión de Personal", "Reunión en Sala Principal.", date, Evento.TIPO_SIMPLE));
-        }
-        if (date.endsWith("-10")) {
-            // Evento que requiere subir fotos o videos
-            mockEvents.add(new Evento("e3", "Subir Fotos de Inventario", "Fotos de los productos nuevos.", date, Evento.TIPO_MEDIA));
-        }
-
-        eventosAdapter.setEventos(mockEvents);
-        showEmptyState(mockEvents.isEmpty());
+            @Override
+            public void onCancelled(String message) {
+                Toast.makeText(getContext(), "Error al cargar eventos: " + message, Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void showEmptyState(boolean isEmpty) {
-        // Visibilidad del Empty State
         binding.emptyState.setVisibility(isEmpty ? View.VISIBLE : View.GONE);
-
-        // Visibilidad del RecyclerView
         binding.rvEventosDia.setVisibility(isEmpty ? View.GONE : View.VISIBLE);
-
-        // **¡CRUCIAL!** Forzar a que el adaptador sepa que los datos han cambiado.
-        // Esto es especialmente útil después de cambiar la visibilidad de GONE a VISIBLE.
         eventosAdapter.notifyDataSetChanged();
 
-        // Invalida la vista padre para forzar el redibujado completo
         if (binding.rvEventosDia.getVisibility() == View.VISIBLE) {
             View parent = (View) binding.rvEventosDia.getParent().getParent();
             if (parent != null) {
@@ -121,28 +132,25 @@ public class CalendarFragment extends Fragment
         }
     }
 
-    // --- IMPLEMENTACIÓN CLAVE: Manejo del clic del botón en la lista ---
     @Override
     public void onActionClick(Evento evento) {
         Fragment nextFragment = null;
 
-        // Lógica de navegación basada en el tipo de acción del Evento
         switch (evento.getTipoAccion()) {
             case Evento.TIPO_DOCUMENTO:
                 nextFragment = new UploadDocumentsFragment();
                 break;
-                case Evento.TIPO_MEDIA:
+            case Evento.TIPO_MEDIA:
                 nextFragment = new UploadMediaFragment();
                 break;
             default:
-                return; // Ignorar otros tipos que no tienen botón
+                return;
         }
 
-        // Realizar la transacción del Fragmento (navegación)
         if (nextFragment != null) {
             getParentFragmentManager().beginTransaction()
-                    .replace(R.id.fragment_container, nextFragment) // Asegúrate que 'fragment_container' es tu ID correcto en MainActivity
-                    .addToBackStack(null) // Para que el usuario pueda volver con el botón "Atrás"
+                    .replace(R.id.fragment_container, nextFragment)
+                    .addToBackStack(null)
                     .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
                     .commit();
         }

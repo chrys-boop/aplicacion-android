@@ -12,6 +12,9 @@ public class Evento {
     private String fecha;
     private String tipoAccion;
 
+    // Constructor vacío requerido para Firebase
+    public Evento() {}
+
     public Evento(String id, String titulo, String descripcion, String fecha, String tipoAccion) {
         this.id = id;
         this.titulo = titulo;
@@ -21,6 +24,7 @@ public class Evento {
     }
 
     // Getters necesarios para el adaptador y la navegación
+    public String getId() { return id; }
     public String getTitulo() { return titulo; }
     public String getDescripcion() { return descripcion; }
     public String getTipoAccion() { return tipoAccion; }
