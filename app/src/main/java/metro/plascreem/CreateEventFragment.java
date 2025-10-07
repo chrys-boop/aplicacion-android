@@ -111,7 +111,7 @@ public class CreateEventFragment extends Fragment {
 
     private void sendNotification(String title, String body) {
         // IMPORTANTE: Reemplaza esta URL con la URL de tu función de Netlify una vez desplegada.
-        String functionUrl = "YOUR_NETLIFY_FUNCTION_URL_HERE";
+        String functionUrl = "https://capacitacion-mrodante.netlify.app/.netlify/functions/send-notification";
 
         if (getContext() == null) {
             Log.e("Notification", "Contexto nulo, no se puede enviar la solicitud.");

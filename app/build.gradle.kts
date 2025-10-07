@@ -70,6 +70,7 @@ dependencies {
     implementation("com.google.firebase:firebase-analytics-ktx")
     implementation("com.google.firebase:firebase-storage-ktx")
 
+
     // Volley para peticiones de red
     implementation("com.android.volley:volley:1.2.1")
 
