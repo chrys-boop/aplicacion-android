@@ -1,4 +1,5 @@
 
+// V2: Limpieza de proyecto
 const admin = require("firebase-admin");
 
 // ! IMPORTANTE: No pegarás el JSON aquí directamente.
@@ -53,3 +54,4 @@ exports.handler = async function(event, context) {
     };
   }
 };
+
