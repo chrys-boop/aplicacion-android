@@ -115,11 +115,10 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tv_manuals_title">
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rv_manuals"
+        <FrameLayout
+            android:id="@+id/manuals_fragment_container"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:padding="8dp"/>
+            android:layout_height="match_parent"/>
 
     </androidx.cardview.widget.CardView>
 

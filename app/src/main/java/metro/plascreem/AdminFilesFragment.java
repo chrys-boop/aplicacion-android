@@ -1,140 +1,224 @@
 package metro.plascreem;
 
+import android.app.Activity;
 import android.content.Intent;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.OpenableColumns;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Toast;
-import android.widget.ImageView;
-import android.widget.VideoView;
+import android.widget.Button;
+import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
-import metro.plascreem.databinding.FragmentAdminFilesBinding;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
-public class AdminFilesFragment extends Fragment {
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
 
-    private FragmentAdminFilesBinding binding;
-    private static final int PICK_FILE_REQUEST_CODE = 100;
+import java.util.ArrayList;
+import java.util.List;
 
-    public AdminFilesFragment() {}
+public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileActionListener {
 
+    private static final String DATABASE_PATH = "manuales_pdf";
+
+    private Button btnSelectFile, btnUploadFile;
+    private TextView tvFileNameStatus;
+    private ProgressBar progressBarUpload, progressBarList;
+    private RecyclerView recyclerViewFiles;
+
+    private Uri selectedFileUri;
+    private String selectedFileName;
+
+    private StorageReference storageReference;
+    private DatabaseReference databaseReference;
+    private FileAdapter fileAdapter;
+    private final List<FileMetadata> fileList = new ArrayList<>();
+
+    // Launcher para el selector de archivos
+    private final ActivityResultLauncher<Intent> filePickerLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
+                    selectedFileUri = result.getData().getData();
+                    selectedFileName = getFileNameFromUri(selectedFileUri);
+                    tvFileNameStatus.setText(selectedFileName);
+                    btnUploadFile.setEnabled(true);
+                }
+            });
+
+    @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
-        binding = FragmentAdminFilesBinding.inflate(inflater, container, false);
-        return binding.getRoot();
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+        View view = inflater.inflate(R.layout.fragment_admin_files, container, false);
+
+        // Inicializar Firebase
+        storageReference = FirebaseStorage.getInstance().getReference(DATABASE_PATH);
+        databaseReference = FirebaseDatabase.getInstance().getReference(DATABASE_PATH);
+
+        // Vincular vistas
+        btnSelectFile = view.findViewById(R.id.btn_select_file);
+        btnUploadFile = view.findViewById(R.id.btn_upload_file);
+        tvFileNameStatus = view.findViewById(R.id.tv_file_name_status);
+        progressBarUpload = view.findViewById(R.id.progress_bar_upload);
+        progressBarList = view.findViewById(R.id.progress_bar_list);
+        recyclerViewFiles = view.findViewById(R.id.recycler_view_files);
+
+        // Configurar RecyclerView
+        recyclerViewFiles.setLayoutManager(new LinearLayoutManager(getContext()));
+        fileAdapter = new FileAdapter(fileList, this);
+        recyclerViewFiles.setAdapter(fileAdapter);
+
+        // Configurar listeners
+        btnSelectFile.setOnClickListener(v -> openFilePicker());
+        btnUploadFile.setOnClickListener(v -> uploadFile());
+
+        // Cargar lista de archivos
+        loadFilesFromDatabase();
+
+        return view;
     }
 
-    @Override
-    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
-
-        // --- Lógica de Carga de Archivos ---
-        binding.btnSeleccionarSubir.setOnClickListener(v -> {
-            openGenericFileSelector();
-        });
-
-        // --- Lógica de Simulación de Visualización ---
-
-        // 1. Simulación PDF/Documento (Solo muestra un mensaje)
-        binding.btnFilePdf.setOnClickListener(v -> {
-            simulateFileViewer("Manual de Seguridad.pdf", "application/pdf");
-        });
-
-        // 2. Simulación Video (Necesita un VideoView real, aquí solo simula)
-        binding.btnFileVideo.setOnClickListener(v -> {
-            simulateFileViewer("Video de Capacitación.mp4", "video/*");
-        });
-
-        // 3. Simulación Imagen (Solo muestra un mensaje)
-        binding.btnFileImage.setOnClickListener(v -> {
-            simulateFileViewer("Diagrama Eléctrico.jpg", "image/*");
-        });
-
-        // 4. Simulación Audio (Solo muestra un mensaje)
-        binding.btnFileAudio.setOnClickListener(v -> {
-            simulateFileViewer("Minuta de Reunión.mp3", "audio/*");
-        });
-    }
-
-    // Método para abrir el selector de archivos genérico (para subida)
-    private void openGenericFileSelector() {
+    private void openFilePicker() {
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-        // Permitimos seleccionar cualquier tipo de archivo
-        intent.setType("*/*");
-        intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[] {
-                "application/pdf", "application/msword", "application/vnd.ms-excel",
-                "video/*", "audio/*", "image/*"
-        });
+        intent.setType("application/pdf");
         intent.addCategory(Intent.CATEGORY_OPENABLE);
+        filePickerLauncher.launch(intent);
+    }
+
+    private void uploadFile() {
+        if (selectedFileUri == null || selectedFileName == null) {
+            Toast.makeText(getContext(), "Por favor, seleccione un archivo primero", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        progressBarUpload.setVisibility(View.VISIBLE);
+        btnUploadFile.setEnabled(false);
+
+        StorageReference fileRef = storageReference.child(selectedFileName);
+
+        fileRef.putFile(selectedFileUri)
+                .addOnSuccessListener(taskSnapshot -> fileRef.getDownloadUrl().addOnSuccessListener(uri -> {
+                    Toast.makeText(getContext(), "Archivo subido con éxito", Toast.LENGTH_SHORT).show();
+                    FileMetadata metadata = new FileMetadata(selectedFileName, uri.toString(), fileRef.getPath());
+                    String fileId = databaseReference.push().getKey();
+                    if (fileId != null) {
+                        databaseReference.child(fileId).setValue(metadata);
+                    }
+                    resetUploadUI();
+                }))
+                .addOnFailureListener(e -> {
+                    Toast.makeText(getContext(), "Error al subir el archivo: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    resetUploadUI();
+                })
+                .addOnProgressListener(snapshot -> {
+                    double progress = (100.0 * snapshot.getBytesTransferred()) / snapshot.getTotalByteCount();
+                    progressBarUpload.setProgress((int) progress);
+                });
+    }
+
+    private void loadFilesFromDatabase() {
+        progressBarList.setVisibility(View.VISIBLE);
+        databaseReference.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                fileList.clear();
+                for (DataSnapshot postSnapshot : snapshot.getChildren()) {
+                    FileMetadata metadata = postSnapshot.getValue(FileMetadata.class);
+                    fileList.add(metadata);
+                }
+                fileAdapter.notifyDataSetChanged();
+                progressBarList.setVisibility(View.GONE);
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Toast.makeText(getContext(), "Error al cargar la lista de archivos.", Toast.LENGTH_SHORT).show();
+                progressBarList.setVisibility(View.GONE);
+            }
+        });
+    }
+
+    @Override
+    public void onViewFile(FileMetadata file) {
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setDataAndType(Uri.parse(file.getUrl()), "application/pdf");
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         try {
-            startActivityForResult(Intent.createChooser(intent, "Selecciona Archivo para Subir"), PICK_FILE_REQUEST_CODE);
+            startActivity(intent);
         } catch (Exception e) {
-            Toast.makeText(getContext(), "Error al abrir el selector de archivos.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), "No se encontró una aplicación para abrir PDFs", Toast.LENGTH_SHORT).show();
         }
     }
 
     @Override
-    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-
-        if (requestCode == PICK_FILE_REQUEST_CODE && resultCode == getActivity().RESULT_OK && data != null && data.getData() != null) {
-            Uri fileUri = data.getData();
-            // Simulación de subida (mostrar el nombre del archivo seleccionado)
-            Toast.makeText(getContext(), "Archivo seleccionado: " + fileUri.getLastPathSegment(), Toast.LENGTH_LONG).show();
-            binding.tvSubidaStatus.setText("Listo para subir: " + fileUri.getLastPathSegment() + ".\n(Aquí iría la lógica de subida real)");
-
-            // Aquí llamarías a una función para subir el archivo.
-            // Por ahora, solo actualizamos el estado.
-        }
+    public void onDeleteFile(FileMetadata file) {
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Confirmar Eliminación")
+                .setMessage("¿Estás seguro de que quieres eliminar '" + file.getName() + "'? Esta acción no se puede deshacer.")
+                .setPositiveButton("Eliminar", (dialog, which) -> {
+                    // Eliminar de Firebase Storage
+                    StorageReference fileRefToDelete = FirebaseStorage.getInstance().getReferenceFromUrl(file.getUrl());
+                    fileRefToDelete.delete().addOnSuccessListener(aVoid -> {
+                        // Eliminar de Firebase Realtime Database
+                        databaseReference.orderByChild("url").equalTo(file.getUrl()).addListenerForSingleValueEvent(new ValueEventListener() {
+                            @Override
+                            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                                for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
+                                    snapshot.getRef().removeValue();
+                                }
+                                Toast.makeText(getContext(), "Archivo eliminado con éxito", Toast.LENGTH_SHORT).show();
+                            }
+                            @Override
+                            public void onCancelled(@NonNull DatabaseError databaseError) {
+                                Toast.makeText(getContext(), "Error al eliminar de la base de datos", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                    }).addOnFailureListener(e -> Toast.makeText(getContext(), "Error al eliminar el archivo de Storage", Toast.LENGTH_SHORT).show());
+                })
+                .setNegativeButton("Cancelar", null)
+                .show();
     }
 
-    // --- LÓGICA DE SIMULACIÓN DE VISUALIZACIÓN ---
-    private void simulateFileViewer(String fileName, String mimeType) {
-        binding.cardMediaPlayer.setVisibility(View.VISIBLE);
-
-        // Limpiamos el contenedor anterior
-        binding.mediaContainer.removeAllViews();
-
-        // En una app real, aquí se descargaría el archivo de Supabase y se mostraría.
-
-        if (mimeType.startsWith("image/")) {
-            // Simulación: Muestra una ImageView (con un placeholder)
-            ImageView imageView = new ImageView(getContext());
-            imageView.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-            imageView.setImageResource(android.R.drawable.ic_menu_gallery); // Placeholder
-            imageView.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            binding.mediaContainer.addView(imageView);
-            Toast.makeText(getContext(), "Visualizando: " + fileName, Toast.LENGTH_SHORT).show();
-
-        } else if (mimeType.startsWith("video/") || mimeType.startsWith("audio/")) {
-            // Simulación: Muestra un VideoView o un mensaje para audio
-            TextView textView = new TextView(getContext());
-            textView.setText("Reproduciendo " + (mimeType.startsWith("video/") ? "VIDEO" : "AUDIO") + ": " + fileName + "\n(Aquí iría el VideoView/MediaPlayer)");
-            textView.setGravity(android.view.Gravity.CENTER);
-            textView.setTextSize(18);
-            binding.mediaContainer.addView(textView);
-            Toast.makeText(getContext(), "Reproduciendo: " + fileName, Toast.LENGTH_SHORT).show();
-
-        } else if (mimeType.contains("pdf") || mimeType.contains("word") || mimeType.contains("excel")) {
-            // Simulación: Muestra un mensaje para documentos
-            TextView textView = new TextView(getContext());
-            textView.setText("Documento " + fileName + " abierto.\n(En una app real, se usaría una librería de visor PDF/DOCX)");
-            textView.setGravity(android.view.Gravity.CENTER);
-            textView.setTextSize(18);
-            binding.mediaContainer.addView(textView);
-            Toast.makeText(getContext(), "Abriendo documento: " + fileName, Toast.LENGTH_SHORT).show();
-
+    private String getFileNameFromUri(Uri uri) {
+        String result = null;
+        if (uri.getScheme().equals("content")) {
+            try (Cursor cursor = requireContext().getContentResolver().query(uri, null, null, null, null)) {
+                if (cursor != null && cursor.moveToFirst()) {
+                    int nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                    if (nameIndex != -1) {
+                        result = cursor.getString(nameIndex);
+                    }
+                }
+            }
         }
+        if (result == null) {
+            result = uri.getLastPathSegment();
+        }
+        return result;
     }
 
-    @Override
-    public void onDestroyView() {
-        super.onDestroyView();
-        binding = null;
+    private void resetUploadUI() {
+        selectedFileUri = null;
+        selectedFileName = null;
+        progressBarUpload.setVisibility(View.GONE);
+        progressBarUpload.setProgress(0);
+        btnUploadFile.setEnabled(false);
+        tvFileNameStatus.setText("Ningún archivo seleccionado");
     }
 }

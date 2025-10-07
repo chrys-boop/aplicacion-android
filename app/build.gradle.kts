@@ -42,6 +42,7 @@ android {
 
 dependencies {
 
+
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.activity)
@@ -60,5 +61,17 @@ dependencies {
     // ... otras dependencias
     implementation ("androidx.recyclerview:recyclerview:1.3.2") // O la versión más reciente
     implementation ("com.google.android.material:material:1.12.0") // O la versión más reciente
+    //firebase
+    implementation(platform("com.google.firebase:firebase-bom:33.0.0"))
+    implementation("com.google.firebase:firebase-auth-ktx")
+    implementation("com.google.firebase:firebase-database-ktx")
+    implementation("com.google.firebase:firebase-messaging-ktx")
+    implementation("com.google.firebase:firebase-analytics-ktx")
+    implementation("com.google.firebase:firebase-storage-ktx")
+
+    // Volley para peticiones de red
+    implementation("com.android.volley:volley:1.2.1")
+
+
 
 }

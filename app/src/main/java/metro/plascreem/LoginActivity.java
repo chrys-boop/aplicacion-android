@@ -1,117 +1,106 @@
 package metro.plascreem;
 
-// Importa las clases necesarias
 import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 import android.content.Intent;
-import java.util.HashMap;
+import com.google.firebase.auth.FirebaseAuth;
 import java.util.Map;
-import androidx.core.content.ContextCompat;
 
 public class LoginActivity extends AppCompatActivity {
 
-    private EditText etExpediente, etPassword;
-    private Button btnLogin, btnEnlaces, btnPersonal, btnTrabajadores, btnAdministrador;
-    private String selectedRole = "Enlaces";
-
-    // Simulación de la base de datos de usuarios
-    private Map<String, String> userCredentials = new HashMap<>();
+    private EditText etEmail, etPassword;
+    private Button btnLogin;
+    private TextView tvGoToRegister; // Nuevo TextView
+    private DatabaseManager databaseManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
-        // Llenar la "base de datos" simulada
-        userCredentials.put("12345_12345", "Enlaces");
-        userCredentials.put("67890_67890", "Personal");
-        userCredentials.put("54321_54321", "Trabajadores");
-        userCredentials.put("09876_09876", "Administrador");
+        databaseManager = new DatabaseManager();
 
-        // Inicializar vistas
-        etExpediente = findViewById(R.id.et_username);
+        etEmail = findViewById(R.id.et_username);
         etPassword = findViewById(R.id.et_password);
         btnLogin = findViewById(R.id.btn_login);
-        btnEnlaces = findViewById(R.id.btn_enlaces);
-        btnPersonal = findViewById(R.id.btn_personal);
-        btnTrabajadores = findViewById(R.id.btn_trabajadores);
-        btnAdministrador = findViewById(R.id.btn_administrador);
+        tvGoToRegister = findViewById(R.id.tv_go_to_register); // Inicializar TextView
 
-        // Configurar el listener para los botones de rol
-        btnEnlaces.setOnClickListener(v -> selectRole("Enlaces"));
-        btnPersonal.setOnClickListener(v -> selectRole("Personal"));
-        btnTrabajadores.setOnClickListener(v -> selectRole("Trabajadores"));
-        btnAdministrador.setOnClickListener(v -> selectRole("Administrador"));
-
-        // Llama a selectRole() para configurar el color inicial al abrir la app
-        selectRole(selectedRole);
-
-        // Configurar el listener para el botón de inicio de sesión
         btnLogin.setOnClickListener(v -> {
-            String expediente = etExpediente.getText().toString();
-            String password = etPassword.getText().toString();
+            String email = etEmail.getText().toString().trim();
+            String password = etPassword.getText().toString().trim();
 
-            String userKey = expediente + "_" + password;
-
-            if (userCredentials.containsKey(userKey) && userCredentials.get(userKey).equals(selectedRole)) {
-                Toast.makeText(this, "Inicio de sesión exitoso como " + selectedRole, Toast.LENGTH_SHORT).show();
-
-                // Lógica de navegación basada en el rol
-                if (selectedRole.equals("Administrador")) {
-                    Intent intent = new Intent(this,Administrador.class);
-                    intent.putExtra("NOMBRE_COMPLETO", "Nombre Admin");
-                    intent.putExtra("NUMERO_EXPEDIENTE", expediente);
-                    startActivity(intent);
-                } else if (selectedRole.equals("Enlaces")) {
-                    Intent intent = new Intent(this, Enlaces.class);
-                    intent.putExtra("NOMBRE_COMPLETO", "Nombre Enlace");
-                    intent.putExtra("NUMERO_EXPEDIENTE", expediente);
-                    startActivity(intent);
-                } else if (selectedRole.equals("Personal")) {
-                    Intent intent = new Intent(this, Personal_Administrativo.class);
-                    intent.putExtra("NOMBRE_COMPLETO", "Nombre Personal");
-                    intent.putExtra("NUMERO_EXPEDIENTE", expediente);
-                    startActivity(intent);
-                } else if (selectedRole.equals("Trabajadores")) {
-                    Intent intent = new Intent(this, Trabajadores.class);
-                    intent.putExtra("NOMBRE_COMPLETO", "Nombre Trabajador");
-                    intent.putExtra("NUMERO_EXPEDIENTE", expediente);
-                    startActivity(intent);
-                }
-                finish();
-
-            } else {
-                Toast.makeText(this, "Credenciales incorrectas o rol no coincidente.", Toast.LENGTH_SHORT).show();
+            if (email.isEmpty() || password.isEmpty()) {
+                Toast.makeText(LoginActivity.this, "Por favor, ingrese correo y contraseña.", Toast.LENGTH_SHORT).show();
+                return;
             }
+
+            databaseManager.loginUser(email, password, new DatabaseManager.AuthListener() {
+                @Override
+                public void onSuccess() {
+                    Toast.makeText(LoginActivity.this, "Inicio de sesión exitoso.", Toast.LENGTH_SHORT).show();
+                    String userId = FirebaseAuth.getInstance().getCurrentUser().getUid();
+                    fetchUserDataAndRedirect(userId);
+                }
+
+                @Override
+                public void onFailure(String message) {
+                    Toast.makeText(LoginActivity.this, "Error en el inicio de sesión: " + message, Toast.LENGTH_LONG).show();
+                }
+            });
+        });
+
+        // Listener para el nuevo TextView
+        tvGoToRegister.setOnClickListener(v -> {
+            Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
+            startActivity(intent);
         });
     }
 
-    private void selectRole(String role) {
-        selectedRole = role;
+    private void fetchUserDataAndRedirect(String userId) {
+        databaseManager.getUserDataMap(userId, new DatabaseManager.UserDataMapListener() {
+            @Override
+            public void onDataReceived(Map<String, Object> userData) {
+                if (userData == null || !userData.containsKey("userType")) {
+                    Toast.makeText(LoginActivity.this, "No se pudo determinar el rol del usuario.", Toast.LENGTH_SHORT).show();
+                    return;
+                }
 
-        // Reinicia el color de todos los botones
-        btnEnlaces.setBackgroundColor(ContextCompat.getColor(this, R.color.colorInactivo));
-        btnPersonal.setBackgroundColor(ContextCompat.getColor(this, R.color.colorInactivo));
-        btnTrabajadores.setBackgroundColor(ContextCompat.getColor(this, R.color.colorInactivo));
-        btnAdministrador.setBackgroundColor(ContextCompat.getColor(this, R.color.colorInactivo));
+                String userType = (String) userData.get("userType");
 
-        // Cambia el color del botón seleccionado a "activo"
-        switch (role) {
-            case "Enlaces":
-                btnEnlaces.setBackgroundColor(ContextCompat.getColor(this, R.color.colorActivo));
-                break;
-            case "Personal":
-                btnPersonal.setBackgroundColor(ContextCompat.getColor(this, R.color.colorActivo));
-                break;
-            case "Trabajadores":
-                btnTrabajadores.setBackgroundColor(ContextCompat.getColor(this, R.color.colorActivo));
-                break;
-            case "Administrador":
-                btnAdministrador.setBackgroundColor(ContextCompat.getColor(this, R.color.colorActivo));
-                break;
-        }
+                Intent intent;
+                switch (userType) {
+                    case "Administrador":
+                        intent = new Intent(LoginActivity.this, Administrador.class);
+                        break;
+                    case "Enlaces":
+                        intent = new Intent(LoginActivity.this, Enlaces.class);
+                        break;
+                    case "Personal":
+                        intent = new Intent(LoginActivity.this, Personal_Administrativo.class);
+                        break;
+                    case "Trabajadores":
+                        intent = new Intent(LoginActivity.this, Trabajadores.class);
+                        String nombre = (String) userData.get("nombreCompleto");
+                        String expediente = (String) userData.get("numeroExpediente");
+                        intent.putExtra("NOMBRE_COMPLETO", nombre);
+                        intent.putExtra("NUMERO_EXPEDIENTE", expediente);
+                        break;
+                    default:
+                        Toast.makeText(LoginActivity.this, "Rol de usuario no reconocido.", Toast.LENGTH_SHORT).show();
+                        return;
+                }
+                startActivity(intent);
+                finish();
+            }
+
+            @Override
+            public void onDataCancelled(String message) {
+                Toast.makeText(LoginActivity.this, "Error al obtener datos de usuario: " + message, Toast.LENGTH_LONG).show();
+            }
+        });
     }
 }

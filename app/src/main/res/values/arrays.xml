@@ -1,0 +1,9 @@
+<resources>
+    <string-array name="user_roles">
+        <item>Seleccione un rol</item>
+        <item>Administrador</item>
+        <item>Enlaces</item>
+        <item>Personal</item>
+        <item>Trabajadores</item>
+    </string-array>
+</resources>
