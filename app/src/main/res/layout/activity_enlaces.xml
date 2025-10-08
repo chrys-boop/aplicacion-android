@@ -8,72 +8,92 @@
     android:padding="8dp"
     tools:context=".Enlaces">
 
-    <!-- Tarjeta de Información del Perfil (Mejora Visual) -->
+    <!-- Tarjeta de Perfil Rediseñada -->
     <androidx.cardview.widget.CardView
         android:id="@+id/card_perfil"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_margin="8dp"
         app:cardCornerRadius="12dp"
-        app:cardElevation="6dp"
+        app:cardElevation="8dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
-        <androidx.constraintlayout.widget.ConstraintLayout
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
             android:padding="16dp">
 
-            <TextView
-                android:id="@+id/tv_titulo_perfil"
+            <!-- Ícono de Perfil -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                app:cardCornerRadius="32dp"
+                app:cardElevation="0dp">
+                <ImageView
+                    android:id="@+id/profile_icon"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/ic_usuario"
+                    android:contentDescription="Icono de perfil" />
+            </androidx.cardview.widget.CardView>
+
+            <!-- Información del Usuario -->
+            <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:text="Información del Enlace"
-                android:textSize="22sp"
-                android:textStyle="bold"
-                android:textColor="#303F9F"
-                app:layout_constraintEnd_toStartOf="@id/btn_cerrar_sesion"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
+                android:layout_marginStart="16dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
 
-            <TextView
-                android:id="@+id/tv_datos_perfil"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="Nombre: [Nombre Completo]\nExpediente: [Número]\nTaller: [Taller]\nHorario: [Horario]"
-                android:textSize="15sp"
-                android:textColor="#555555"
-                app:layout_constraintEnd_toStartOf="@id/btn_cerrar_sesion"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/tv_titulo_perfil" />
+                <TextView
+                    android:id="@+id/tv_enlace_name"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Nombre del Enlace"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:textColor="@android:color/black"/>
 
-            <!-- Botón Editar Perfil -->
-            <Button
-                android:id="@+id/btn_editar_perfil"
+                <TextView
+                    android:id="@+id/tv_datos_perfil"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Expediente: [Número]\nTaller: [Taller]"
+                    android:textSize="14sp"
+                    android:textColor="#757575"/>
+
+            </LinearLayout>
+
+            <!-- Botones de Acción -->
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Editar Perfil"
-                android:layout_marginTop="12dp"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/tv_datos_perfil" />
+                android:orientation="vertical">
 
-            <!-- Botón de Cerrar Sesión (Ahora rojo y alineado) -->
-            <Button
-                android:id="@+id/btn_cerrar_sesion"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Cerrar Sesión"
-                style="@style/Widget.AppCompat.Button.Borderless"
-                android:textColor="#D32F2F"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintBaseline_toBaselineOf="@id/btn_editar_perfil"
-                />
+                <Button
+                    android:id="@+id/btn_editar_perfil"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Editar" />
 
-        </androidx.constraintlayout.widget.ConstraintLayout>
+                <Button
+                    android:id="@+id/btn_cerrar_sesion"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:backgroundTint="#EF5350"
+                    android:text="Salir"
+                    android:textColor="@android:color/white"/>
+            </LinearLayout>
+
+        </LinearLayout>
     </androidx.cardview.widget.CardView>
-
 
     <!-- Menú Desplegable (Spinner) -->
     <Spinner
@@ -86,7 +106,7 @@
         android:spinnerMode="dropdown"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/card_perfil" />
+        app:layout_constraintTop_toBottomOf="@+id/card_perfil" />
 
     <!-- Contenedor de Fragments -->
     <FrameLayout
@@ -94,11 +114,9 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:layout_marginTop="16dp"
-        android:layout_marginStart="8dp"
-        android:layout_marginEnd="8dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/spinner_navigation" />
+        app:layout_constraintTop_toBottomOf="@+id/spinner_navigation" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

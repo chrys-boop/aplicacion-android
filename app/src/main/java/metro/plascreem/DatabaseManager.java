@@ -230,10 +230,14 @@ public class DatabaseManager {
         }
     }
 
-    public void updateUserProfile(String userId, String fullName, String email, DataSaveListener listener) {
+    public void updateUserProfile(String userId, String fullName, String email, String expediente, String taller, String enlaceOrigen, String horario, DataSaveListener listener) {
         Map<String, Object> updatedData = new HashMap<>();
         updatedData.put("nombreCompleto", fullName);
         updatedData.put("email", email);
+        updatedData.put("numeroExpediente", expediente);
+        updatedData.put("taller", taller);
+        updatedData.put("enlaceOrigen", enlaceOrigen);
+        updatedData.put("horario", horario);
 
         mDatabase.child("users").child(userId).updateChildren(updatedData)
                 .addOnSuccessListener(aVoid -> listener.onSuccess())

@@ -12,11 +12,20 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.Spinner;
+import android.widget.TextView;
 import android.widget.Toast;
+
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+
+import java.util.Map;
 
 public class Enlaces extends AppCompatActivity {
 
-    // 1. Definir las opciones del menú
+    private DatabaseManager databaseManager;
+    private FirebaseAuth mAuth;
+    private TextView tvEnlaceName, tvDatosPerfil;
+
     private final String[] navigationOptions = new String[]{
             "Subir Archivos y Diagramas",
             "Subir Fotos y Videos",
@@ -29,12 +38,21 @@ public class Enlaces extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_enlaces);
 
+        // Inicializar Firebase y DatabaseManager
+        mAuth = FirebaseAuth.getInstance();
+        databaseManager = new DatabaseManager();
+
         // Inicializar vistas
+        tvEnlaceName = findViewById(R.id.tv_enlace_name);
+        tvDatosPerfil = findViewById(R.id.tv_datos_perfil);
         Spinner spinner = findViewById(R.id.spinner_navigation);
         Button btnEditarPerfil = findViewById(R.id.btn_editar_perfil);
         Button btnCerrarSesion = findViewById(R.id.btn_cerrar_sesion);
 
-        // 2. Configurar el adaptador para el Spinner
+        // Cargar datos del enlace
+        loadEnlaceData();
+
+        // Configurar el adaptador para el Spinner
         ArrayAdapter<String> adapter = new ArrayAdapter<>(
                 this,
                 android.R.layout.simple_spinner_dropdown_item,
@@ -42,68 +60,90 @@ public class Enlaces extends AppCompatActivity {
         );
         spinner.setAdapter(adapter);
 
-        // 3. Manejar el evento de selección del Spinner
+        // Manejar el evento de selección del Spinner
         spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                Fragment selectedFragment = null;
                 switch (position) {
                     case 0:
-                        replaceFragment(new UploadDocumentsFragment());
+                        selectedFragment = new UploadDocumentsFragment();
                         break;
                     case 1:
-                        replaceFragment(new UploadMediaFragment());
+                        selectedFragment = new UploadMediaFragment();
                         break;
                     case 2:
-                        replaceFragment(new CalendarFragment());
+                        selectedFragment = new CalendarFragment();
                         break;
                     case 3:
-                        replaceFragment(new UpdateDataFragment());
+                        selectedFragment = new UpdateDataFragment();
                         break;
+                }
+                if (selectedFragment != null) {
+                    replaceFragment(selectedFragment, false);
                 }
             }
 
             @Override
-            public void onNothingSelected(AdapterView<?> parent) {
-            }
+            public void onNothingSelected(AdapterView<?> parent) {}
         });
 
-        // 4. Implementar la acción de Cerrar Sesión
-        btnCerrarSesion.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                // TODO: 1. Aquí se debe llamar al método de cierre de sesión de Firebase Auth, etc.
-                Toast.makeText(Enlaces.this, "Cerrando Sesión...", Toast.LENGTH_SHORT).show();
-                Toast.makeText(Enlaces.this, "Sesión Cerrada", Toast.LENGTH_SHORT).show();
-
-                // 2. Navegar a la Activity principal o de inicio de sesión.
-                Intent intent = new Intent(Enlaces.this, LoginActivity.class);
-
-                // Flags para asegurar la limpieza de la pila y evitar el regreso al dashboard
-                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                startActivity(intent);
-                finish(); // Finaliza esta Activity para que no quede en la pila
-            }
+        // Implementar la acción de Cerrar Sesión
+        btnCerrarSesion.setOnClickListener(v -> {
+            mAuth.signOut();
+            Toast.makeText(Enlaces.this, "Sesión Cerrada", Toast.LENGTH_SHORT).show();
+            Intent intent = new Intent(Enlaces.this, LoginActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+            finish();
         });
 
-        btnEditarPerfil.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Toast.makeText(Enlaces.this, "Editar Perfil", Toast.LENGTH_SHORT).show();
-                replaceFragment(new EditProfileFragment());
-            }
+        // Implementar la acción de Editar Perfil
+        btnEditarPerfil.setOnClickListener(v -> {
+            replaceFragment(new EditProfileFragment(), true);
         });
 
-        // 5. Cargar el Fragment inicial al iniciar la Activity
+        // Cargar el Fragment inicial
         if (savedInstanceState == null) {
             spinner.setSelection(0);
         }
     }
 
-    private void replaceFragment(Fragment fragment) {
-        FragmentManager fragmentManager = getSupportFragmentManager();
-        FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
-        fragmentTransaction.replace(R.id.fragment_container, fragment);
-        fragmentTransaction.commit();
+    private void loadEnlaceData() {
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        if (currentUser != null) {
+            String userId = currentUser.getUid();
+            databaseManager.getUserDataMap(userId, new DatabaseManager.UserDataMapListener() {
+                @Override
+                public void onDataReceived(Map<String, Object> userData) {
+                    if (userData != null) {
+                        String nombre = String.valueOf(userData.getOrDefault("nombreCompleto", "Nombre no disponible"));
+                        String expediente = String.valueOf(userData.getOrDefault("numeroExpediente", "N/A"));
+                        String taller = String.valueOf(userData.getOrDefault("taller", "N/A"));
+
+                        tvEnlaceName.setText(nombre);
+                        String profileDetails = "Expediente: " + expediente + "\n" + "Taller: " + taller;
+                        tvDatosPerfil.setText(profileDetails);
+                    }
+                }
+
+                @Override
+                public void onDataCancelled(String message) {
+                    Toast.makeText(Enlaces.this, "Error al cargar datos: " + message, Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
     }
 
-} // Fin de la clase Enlaces
+    private void replaceFragment(Fragment fragment, boolean addToBackStack) {
+        FragmentManager fragmentManager = getSupportFragmentManager();
+        FragmentTransaction transaction = fragmentManager.beginTransaction();
+        // Reemplaza el FrameLayout, no el contenedor raíz de la actividad
+        transaction.replace(R.id.fragment_container, fragment);
+        if (addToBackStack) {
+            transaction.addToBackStack(null);
+        }
+        transaction.commit();
+    }
+
+}
