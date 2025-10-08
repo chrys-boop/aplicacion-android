@@ -50,7 +50,6 @@ public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileAc
     private FileAdapter fileAdapter;
     private final List<FileMetadata> fileList = new ArrayList<>();
 
-    // Launcher para el selector de archivos
     private final ActivityResultLauncher<Intent> filePickerLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
             result -> {
@@ -67,11 +66,9 @@ public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileAc
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_admin_files, container, false);
 
-        // Inicializar Firebase
         storageReference = FirebaseStorage.getInstance().getReference(DATABASE_PATH);
         databaseReference = FirebaseDatabase.getInstance().getReference(DATABASE_PATH);
 
-        // Vincular vistas
         btnSelectFile = view.findViewById(R.id.btn_select_file);
         btnUploadFile = view.findViewById(R.id.btn_upload_file);
         tvFileNameStatus = view.findViewById(R.id.tv_file_name_status);
@@ -79,16 +76,13 @@ public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileAc
         progressBarList = view.findViewById(R.id.progress_bar_list);
         recyclerViewFiles = view.findViewById(R.id.recycler_view_files);
 
-        // Configurar RecyclerView
         recyclerViewFiles.setLayoutManager(new LinearLayoutManager(getContext()));
         fileAdapter = new FileAdapter(fileList, this);
         recyclerViewFiles.setAdapter(fileAdapter);
 
-        // Configurar listeners
         btnSelectFile.setOnClickListener(v -> openFilePicker());
         btnUploadFile.setOnClickListener(v -> uploadFile());
 
-        // Cargar lista de archivos
         loadFilesFromDatabase();
 
         return view;
@@ -115,8 +109,20 @@ public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileAc
         fileRef.putFile(selectedFileUri)
                 .addOnSuccessListener(taskSnapshot -> fileRef.getDownloadUrl().addOnSuccessListener(uri -> {
                     Toast.makeText(getContext(), "Archivo subido con éxito", Toast.LENGTH_SHORT).show();
-                    FileMetadata metadata = new FileMetadata(selectedFileName, uri.toString(), fileRef.getPath());
+
+                    long size = taskSnapshot.getMetadata() != null ? taskSnapshot.getMetadata().getSizeBytes() : 0;
                     String fileId = databaseReference.push().getKey();
+
+                    FileMetadata metadata = new FileMetadata(
+                            fileId,
+                            selectedFileName,
+                            uri.toString(),
+                            fileRef.getPath(),
+                            null, // No hay un 'uploaderId' para manuales generales
+                            size,
+                            System.currentTimeMillis()
+                    );
+
                     if (fileId != null) {
                         databaseReference.child(fileId).setValue(metadata);
                     }
@@ -140,7 +146,10 @@ public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileAc
                 fileList.clear();
                 for (DataSnapshot postSnapshot : snapshot.getChildren()) {
                     FileMetadata metadata = postSnapshot.getValue(FileMetadata.class);
-                    fileList.add(metadata);
+                    if (metadata != null) {
+                        metadata.setFileId(postSnapshot.getKey()); // Aseguramos que el ID esté presente
+                        fileList.add(metadata);
+                    }
                 }
                 fileAdapter.notifyDataSetChanged();
                 progressBarList.setVisibility(View.GONE);
@@ -156,8 +165,12 @@ public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileAc
 
     @Override
     public void onViewFile(FileMetadata file) {
+        if (file.getDownloadUrl() == null) {
+            Toast.makeText(getContext(), "URL no disponible.", Toast.LENGTH_SHORT).show();
+            return;
+        }
         Intent intent = new Intent(Intent.ACTION_VIEW);
-        intent.setDataAndType(Uri.parse(file.getUrl()), "application/pdf");
+        intent.setDataAndType(Uri.parse(file.getDownloadUrl()), "application/pdf");
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         try {
             startActivity(intent);
@@ -168,28 +181,22 @@ public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileAc
 
     @Override
     public void onDeleteFile(FileMetadata file) {
+        if (file.getFileId() == null || file.getStoragePath() == null) {
+            Toast.makeText(getContext(), "Metadatos del archivo incompletos o corruptos. No se puede eliminar.", Toast.LENGTH_LONG).show();
+            return;
+        }
+
         new AlertDialog.Builder(requireContext())
                 .setTitle("Confirmar Eliminación")
-                .setMessage("¿Estás seguro de que quieres eliminar '" + file.getName() + "'? Esta acción no se puede deshacer.")
+                .setMessage("¿Estás seguro de que quieres eliminar '" + file.getFileName() + "'? Esta acción no se puede deshacer.")
                 .setPositiveButton("Eliminar", (dialog, which) -> {
-                    // Eliminar de Firebase Storage
-                    StorageReference fileRefToDelete = FirebaseStorage.getInstance().getReferenceFromUrl(file.getUrl());
+                    StorageReference fileRefToDelete = FirebaseStorage.getInstance().getReference().child(file.getStoragePath());
+
                     fileRefToDelete.delete().addOnSuccessListener(aVoid -> {
-                        // Eliminar de Firebase Realtime Database
-                        databaseReference.orderByChild("url").equalTo(file.getUrl()).addListenerForSingleValueEvent(new ValueEventListener() {
-                            @Override
-                            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                                for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
-                                    snapshot.getRef().removeValue();
-                                }
-                                Toast.makeText(getContext(), "Archivo eliminado con éxito", Toast.LENGTH_SHORT).show();
-                            }
-                            @Override
-                            public void onCancelled(@NonNull DatabaseError databaseError) {
-                                Toast.makeText(getContext(), "Error al eliminar de la base de datos", Toast.LENGTH_SHORT).show();
-                            }
-                        });
-                    }).addOnFailureListener(e -> Toast.makeText(getContext(), "Error al eliminar el archivo de Storage", Toast.LENGTH_SHORT).show());
+                        databaseReference.child(file.getFileId()).removeValue()
+                                .addOnSuccessListener(bVoid -> Toast.makeText(getContext(), "Archivo eliminado correctamente", Toast.LENGTH_SHORT).show())
+                                .addOnFailureListener(e -> Toast.makeText(getContext(), "Error al eliminar registro de la base de datos", Toast.LENGTH_SHORT).show());
+                    }).addOnFailureListener(e -> Toast.makeText(getContext(), "Error al eliminar archivo de Storage", Toast.LENGTH_SHORT).show());
                 })
                 .setNegativeButton("Cancelar", null)
                 .show();
@@ -197,7 +204,7 @@ public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileAc
 
     private String getFileNameFromUri(Uri uri) {
         String result = null;
-        if (uri.getScheme().equals("content")) {
+        if (uri.getScheme() != null && uri.getScheme().equals("content")) {
             try (Cursor cursor = requireContext().getContentResolver().query(uri, null, null, null, null)) {
                 if (cursor != null && cursor.moveToFirst()) {
                     int nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
@@ -222,3 +229,4 @@ public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileAc
         tvFileNameStatus.setText("Ningún archivo seleccionado");
     }
 }
+

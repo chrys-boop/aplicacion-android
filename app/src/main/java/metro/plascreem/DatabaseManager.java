@@ -1,6 +1,8 @@
 package metro.plascreem;
 
 import android.net.Uri;
+import android.util.Log;
+
 import androidx.annotation.NonNull;
 
 import com.google.android.gms.tasks.OnCompleteListener;
@@ -13,6 +15,7 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.UploadTask;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -24,6 +27,7 @@ public class DatabaseManager {
     private final FirebaseAuth mAuth;
     private final DatabaseReference mDatabase;
     private final StorageReference mStorageRef;
+    private static final String TAG = "DatabaseManager";
 
 
     public DatabaseManager() {
@@ -55,10 +59,26 @@ public class DatabaseManager {
         void onFailure(String message);
     }
 
+    public interface DatabaseListener {
+        void onSuccess();
+        void onFailure(String error);
+    }
+
     public interface EventsListener {
         void onEventsReceived(List<Evento> events);
         void onCancelled(String message);
     }
+
+    public interface AllUsersListener {
+        void onUsersReceived(List<User> users);
+        void onCancelled(String message);
+    }
+
+    public interface FileHistoryListener {
+        void onHistoryReceived(List<FileMetadata> history);
+        void onCancelled(String message);
+    }
+
 
     // --- Métodos de autenticación y base de datos ---
 
@@ -66,20 +86,19 @@ public class DatabaseManager {
         mAuth.createUserWithEmailAndPassword(email, password)
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
+                        listener.onSuccess();
                         String userId = mAuth.getCurrentUser().getUid();
-
                         Map<String, Object> userData = new HashMap<>();
                         userData.put("email", email);
                         userData.put("userType", userType);
                         userData.put("nombreCompleto", fullName);
                         userData.put("numeroExpediente", expediente);
+                        userData.put("lastConnection", System.currentTimeMillis());
 
                         mDatabase.child("users").child(userId).setValue(userData)
                                 .addOnCompleteListener(dbTask -> {
-                                    if (dbTask.isSuccessful()) {
-                                        listener.onSuccess();
-                                    } else {
-                                        listener.onFailure(dbTask.getException().getMessage());
+                                    if (!dbTask.isSuccessful()) {
+                                        Log.e(TAG, "Error al guardar datos de usuario.", dbTask.getException());
                                     }
                                 });
                     } else {
@@ -93,6 +112,8 @@ public class DatabaseManager {
         mAuth.signInWithEmailAndPassword(email, password)
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
+                        String userId = mAuth.getCurrentUser().getUid();
+                        mDatabase.child("users").child(userId).child("lastConnection").setValue(System.currentTimeMillis());
                         listener.onSuccess();
                     } else {
                         listener.onFailure(task.getException().getMessage());
@@ -100,33 +121,90 @@ public class DatabaseManager {
                 });
     }
 
-    public void getUserDataMap(String userId, final UserDataMapListener listener) {
-        mDatabase.child("users").child(userId).get().addOnCompleteListener(new OnCompleteListener<DataSnapshot>() {
+    public void getAllUsers(AllUsersListener listener) {
+        mDatabase.child("users").addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
-            public void onComplete(@NonNull Task<DataSnapshot> task) {
-                if (task.isSuccessful()) {
-                    DataSnapshot snapshot = task.getResult();
-                    if (snapshot.exists()) {
-                        @SuppressWarnings("unchecked")
-                        Map<String, Object> userData = (Map<String, Object>) snapshot.getValue();
-                        listener.onDataReceived(userData);
-                    } else {
-                        listener.onDataCancelled("No data available for this user.");
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                List<User> userList = new ArrayList<>();
+                for (DataSnapshot userSnapshot : snapshot.getChildren()) {
+                    User user = userSnapshot.getValue(User.class);
+                    if (user != null) {
+                        user.setUid(userSnapshot.getKey());
+                        userList.add(user);
                     }
-                } else {
-                    listener.onDataCancelled(task.getException().getMessage());
                 }
+                listener.onUsersReceived(userList);
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                listener.onCancelled(error.getMessage());
             }
         });
     }
 
-    public void uploadFile(Uri fileUri, String fileName, UploadListener listener) {
-        StorageReference fileRef = mStorageRef.child("documents/" + fileName);
+    public void getFilesUploadedByUser(String userId, FileHistoryListener listener) {
+        mDatabase.child("files").orderByChild("uploaderId").equalTo(userId).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                List<FileMetadata> fileList = new ArrayList<>();
+                for (DataSnapshot fileSnapshot : snapshot.getChildren()) {
+                    FileMetadata metadata = fileSnapshot.getValue(FileMetadata.class);
+                    if (metadata != null) {
+                        metadata.setFileId(fileSnapshot.getKey()); // Guardar el ID del archivo
+                        fileList.add(metadata);
+                    }
+                }
+                listener.onHistoryReceived(fileList);
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                listener.onCancelled(error.getMessage());
+            }
+        });
+    }
+
+
+    public void getUserDataMap(String userId, final UserDataMapListener listener) {
+        mDatabase.child("users").child(userId).get().addOnCompleteListener(task -> {
+            if (task.isSuccessful()) {
+                DataSnapshot snapshot = task.getResult();
+                if (snapshot.exists()) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> userData = (Map<String, Object>) snapshot.getValue();
+                    listener.onDataReceived(userData);
+                } else {
+                    listener.onDataCancelled("No data available for this user.");
+                }
+            } else {
+                listener.onDataCancelled(task.getException().getMessage());
+            }
+        });
+    }
+
+    public void uploadFile(Uri fileUri, String fileName, String uploaderId, UploadListener listener) {
+        String storagePath = "documents/" + uploaderId + "/" + fileName;
+        StorageReference fileRef = mStorageRef.child(storagePath);
 
         fileRef.putFile(fileUri)
                 .addOnSuccessListener(taskSnapshot -> {
+                    long sizeBytes = taskSnapshot.getMetadata() != null ? taskSnapshot.getMetadata().getSizeBytes() : -1;
+
                     fileRef.getDownloadUrl().addOnSuccessListener(downloadUri -> {
-                        listener.onSuccess(downloadUri.toString());
+                        saveFileMetadata(fileName, downloadUri.toString(), storagePath, sizeBytes, uploaderId, new DataSaveListener() {
+                            @Override
+                            public void onSuccess() {
+                                listener.onSuccess(downloadUri.toString());
+                            }
+
+                            @Override
+                            public void onFailure(String message) {
+                                listener.onFailure(message);
+                            }
+                        });
+                    }).addOnFailureListener(e -> {
+                        listener.onFailure(e.getMessage());
                     });
                 })
                 .addOnFailureListener(e -> {
@@ -138,37 +216,17 @@ public class DatabaseManager {
                 });
     }
 
-    public void uploadMediaFile(Uri fileUri, String fileName, UploadListener listener) {
-        StorageReference fileRef = mStorageRef.child("media/" + fileName);
 
-        fileRef.putFile(fileUri)
-                .addOnSuccessListener(taskSnapshot -> {
-                    fileRef.getDownloadUrl().addOnSuccessListener(downloadUri -> {
-                        listener.onSuccess(downloadUri.toString());
-                    });
-                })
-                .addOnFailureListener(e -> {
-                    listener.onFailure(e.getMessage());
-                })
-                .addOnProgressListener(snapshot -> {
-                    double progress = (100.0 * snapshot.getBytesTransferred()) / snapshot.getTotalByteCount();
-                    listener.onProgress(progress);
-                });
-    }
-
-    public void saveFileMetadata(String fileName, String downloadUrl, long size, String uploaderId, DataSaveListener listener) {
+    public void saveFileMetadata(String fileName, String downloadUrl, String storagePath, long size, String uploaderId, DataSaveListener listener) {
         String fileId = mDatabase.child("files").push().getKey();
-        Map<String, Object> fileData = new HashMap<>();
-        fileData.put("fileName", fileName);
-        fileData.put("downloadUrl", downloadUrl);
-        fileData.put("timestamp", System.currentTimeMillis());
-        fileData.put("size", size);
-        fileData.put("uploaderId", uploaderId);
+        FileMetadata fileData = new FileMetadata(fileId, fileName, downloadUrl, storagePath, uploaderId, size, System.currentTimeMillis());
 
         if (fileId != null) {
             mDatabase.child("files").child(fileId).setValue(fileData)
                     .addOnSuccessListener(aVoid -> listener.onSuccess())
                     .addOnFailureListener(e -> listener.onFailure(e.getMessage()));
+        } else {
+            listener.onFailure("Could not generate file ID.");
         }
     }
 
@@ -216,5 +274,15 @@ public class DatabaseManager {
         } else {
             listener.onFailure("No se pudo generar un ID para el evento.");
         }
+    }
+
+    public void deleteFileRecord(String fileId, final DatabaseListener listener) {
+        if (fileId == null || fileId.isEmpty()) {
+            listener.onFailure("ID de archivo inválido.");
+            return;
+        }
+        mDatabase.child("files").child(fileId).removeValue()
+                .addOnSuccessListener(aVoid -> listener.onSuccess())
+                .addOnFailureListener(e -> listener.onFailure(e.getMessage()));
     }
 }

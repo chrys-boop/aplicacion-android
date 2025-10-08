@@ -13,6 +13,9 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 public class RegisterActivity extends AppCompatActivity {
 
     private EditText etEmail, etPassword, etFullName, etExpediente;
@@ -53,6 +56,18 @@ public class RegisterActivity extends AppCompatActivity {
         });
     }
 
+    private boolean isValidPassword(String password) {
+        if (password == null || password.length() < 8) {
+            return false;
+        }
+        // Expresión regular para validar la contraseña
+        // Mínimo 8 caracteres, al menos una mayúscula, una minúscula, un número y un carácter especial
+        Pattern pattern = Pattern.compile("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@#$%^&+=!?]).{8,}$");
+        Matcher matcher = pattern.matcher(password);
+        return matcher.matches();
+    }
+
+
     private void registerUser() {
         String email = etEmail.getText().toString().trim();
         String password = etPassword.getText().toString().trim();
@@ -66,8 +81,8 @@ public class RegisterActivity extends AppCompatActivity {
             return;
         }
 
-        if (password.length() < 6) {
-            Toast.makeText(this, "La contraseña debe tener al menos 6 caracteres", Toast.LENGTH_SHORT).show();
+        if (!isValidPassword(password)) {
+            Toast.makeText(this, "La contraseña debe tener al menos 8 caracteres, incluyendo una mayúscula, una minúscula, un número y un carácter especial (@#$%^&+=!?)", Toast.LENGTH_LONG).show();
             return;
         }
 
@@ -76,19 +91,22 @@ public class RegisterActivity extends AppCompatActivity {
             return;
         }
 
-        // Llamar al método de registro (que actualizaremos a continuación)
         databaseManager.registerUser(email, password, fullName, expediente, role, new DatabaseManager.AuthListener() {
             @Override
             public void onSuccess() {
-                Toast.makeText(RegisterActivity.this, "Registro exitoso. Por favor inicie sesión.", Toast.LENGTH_LONG).show();
-                // Redirigir al login después de un registro exitoso
-                startActivity(new Intent(RegisterActivity.this, LoginActivity.class));
-                finish();
+                runOnUiThread(() -> {
+                    Toast.makeText(RegisterActivity.this, "Registro exitoso. Por favor inicie sesión.", Toast.LENGTH_LONG).show();
+                    // Redirigir al login después de un registro exitoso
+                    startActivity(new Intent(RegisterActivity.this, LoginActivity.class));
+                    finish();
+                });
             }
 
             @Override
             public void onFailure(String message) {
-                Toast.makeText(RegisterActivity.this, "Error en el registro: " + message, Toast.LENGTH_LONG).show();
+                runOnUiThread(() -> {
+                    Toast.makeText(RegisterActivity.this, "Error en el registro: " + message, Toast.LENGTH_LONG).show();
+                });
             }
         });
     }

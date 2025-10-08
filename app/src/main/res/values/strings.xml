@@ -1,16 +1,65 @@
 <resources>
-    <string name="app_name">splascreem</string>
-    <string name="capacitacion_metro">logo</string>
-    <string name="btn_administrador">Administrador</string>
-    <string name="btn_trabajadores">Trabajadores</string>
-    <string name="btn_personal">Personal Capacitacion</string>
-    <string name="btn_estudiantes">Enlaces Capacitacion</string>
-    <string name="et_username">Número de Expediente</string>
-    <string name="et_password">Contraseña</string>
-    <string name="btn_login">Iniciar sesión</string>
-    <string name="btn_enlaces">Enlaces</string>
-    <!-- TODO: Remove or change this placeholder text -->
-    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="app_name">Plas-Creem</string>
+    <string name="login_expediente_hint">Número de Expediente</string>
+    <string name="login_password_hint">Contraseña</string>
+    <string name="login_button_text">Iniciar Sesión</string>
+    <string name="login_register_prompt">¿No tienes una cuenta? Regístrate</string>
+    <string name="register_title">Registro de Nuevo Usuario</string>
+    <string name="register_name_hint">Nombre Completo</string>
+    <string name="register_expediente_hint">Número de Expediente</string>
+    <string name="register_email_hint">Correo Electrónico</string>
+    <string name="register_password_hint">Crear Contraseña</string>
+    <string name="register_button_text">Registrar</string>
+    <string name="register_login_prompt">¿Ya tienes una cuenta? Inicia Sesión</string>
+    <string name="user_type_selector_label">Tipo de Usuario:</string>
+    <string name="user_type_attendant">Asistente</string>
+    <string name="user_type_technician">Técnico</string>
+    <string name="user_type_administrator">Administrador</string>
+    <string name="title_activity_main_user">MainUserActivity</string>
+    <string name="title_home">Home</string>
+    <string name="title_dashboard">Dashboard</string>
+    <string name="title_notifications">Notifications</string>
+    <string name="title_activity_main_admin">MainAdminActivity</string>
+    <string name="title_activity_main_tecnico">MainTecnicoActivity</string>
 
+    <!-- Strings para Home (Común) -->
+    <string name="home_welcome_text">Bienvenido</string>
+    <string name="home_upload_button">Subir Reporte de Incidencias</string>
+    <string name="home_last_files_header">Mis últimos archivos subidos</string>
+    <string name="home_no_files_message">Aún no has subido ningún archivo.</string>
+
+    <!-- Strings para Perfil -->
+    <string name="profile_title">Mi Perfil</string>
+    <string name="profile_name_label">Nombre:</string>
+    <string name="profile_email_label">Correo:</string>
+    <string name="profile_expediente_label">Nº Expediente:</string>
+    <string name="profile_user_type_label">Rol:</string>
+    <string name="profile_last_connection_label">Última Conexión:</string>
+    <string name="profile_edit_button">Editar Perfil</string>
+    <string name="profile_logout_button">Cerrar Sesión</string>
+    <string name="profile_save_button">Guardar Cambios</string>
+    <string name="profile_cancel_button">Cancelar</string>
+
+    <!-- Strings para Calendario/Eventos -->
+    <string name="calendar_title">Calendario de Mantenimiento</string>
+    <string name="calendar_no_events_message">No hay eventos para esta fecha.</string>
+    <string name="calendar_add_event_button_description">Añadir nuevo evento</string>
+    <string name="dialog_new_event_title">Añadir Nuevo Evento</string>
+    <string name="dialog_event_title_hint">Título del evento</string>
+    <string name="dialog_event_description_hint">Descripción</string>
+    <string name="dialog_event_time_hint">Hora (ej. 14:30)</string>
+    <string name="dialog_event_type_label">Tipo de Evento:</string>
+    <string-array name="event_types">
+        <item>Mantenimiento Preventivo</item>
+        <item>Mantenimiento Correctivo</item>
+        <item>Capacitación</item>
+        <item>Reunión</item>
+        <item>Otro</item>
+    </string-array>
+
+    <!-- Accessibility and Content Descriptions -->
+    <string name="file_type_icon_description">Icono que representa el tipo de archivo</string>
+    <string name="view_file_button_description">Botón para ver el archivo</string>
+    <string name="delete_file_button_description">Botón para borrar el archivo</string>
 
 </resources>
