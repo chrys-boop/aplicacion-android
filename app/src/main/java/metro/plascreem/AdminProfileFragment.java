@@ -72,8 +72,8 @@ public class AdminProfileFragment extends Fragment {
                     if (userData != null && isAdded()) {
                         binding.tvNombre.setText(String.valueOf(userData.getOrDefault("nombreCompleto", "Nombre no disponible")));
                         binding.tvExpediente.setText("Expediente: " + String.valueOf(userData.getOrDefault("numeroExpediente", "N/A")));
-                        binding.tvTaller.setText("Taller: " + String.valueOf(userData.getOrDefault("taller", "N/A")));
-                        binding.tvHorario.setText("Horario: " + String.valueOf(userData.getOrDefault("horario", "N/A")));
+                        binding.tvTaller.setText("Área: " + String.valueOf(userData.getOrDefault("area", "N/A"))); // Campo actualizado
+                        binding.tvHorario.setText("Rol: " + String.valueOf(userData.getOrDefault("titularSuplente", "N/A"))); // Campo actualizado
                     }
                 }
 

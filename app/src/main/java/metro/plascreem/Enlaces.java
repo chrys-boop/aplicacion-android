@@ -1,87 +1,81 @@
 package metro.plascreem;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
-
+import android.util.Log;
 import android.os.Bundle;
-import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.Spinner;
+import android.view.MenuItem;
+
+import com.google.android.material.bottomnavigation.BottomNavigationView;
+
+import com.google.firebase.messaging.FirebaseMessaging;
 
 public class Enlaces extends AppCompatActivity {
 
-    private final String[] navigationOptions = new String[]{
-            "Subir Archivos y Diagramas",
-            "Subir Fotos y Videos",
-            "Ver Calendario",
-            "Actualizar Plantillas e Históricos"
-    };
-
+    private static final String TAG = "Enlaces";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_enlaces);
 
+        // Suscribir al usuario al topic \"all\" para recibir notificaciones
+        subscribeToNotifications();
+
+        BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
+        bottomNav.setOnNavigationItemSelectedListener(navListener);
+
         // Cargar el fragmento de perfil por defecto
         if (savedInstanceState == null) {
-            getSupportFragmentManager().beginTransaction()
-                    .replace(R.id.profile_container, new EnlaceProfileFragment())
-                    .commit();
-        }
-
-        Spinner spinner = findViewById(R.id.spinner_navigation);
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(
-                this,
-                android.R.layout.simple_spinner_dropdown_item,
-                navigationOptions
-        );
-        spinner.setAdapter(adapter);
-
-        // Manejar la selección del Spinner
-        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                Fragment selectedFragment = null;
-                switch (position) {
-                    case 0:
-                        selectedFragment = new UploadDocumentsFragment();
-                        break;
-                    case 1:
-                        selectedFragment = new UploadMediaFragment();
-                        break;
-                    case 2:
-                        selectedFragment = new CalendarFragment();
-                        break;
-                    case 3:
-                        selectedFragment = new UpdateDataFragment();
-                        break;
-                }
-                if (selectedFragment != null) {
-                    // Reemplaza el contenedor de contenido, no el de perfil
-                    replaceFragment(selectedFragment, false, R.id.fragment_container);
-                }
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {}
-        });
-
-        // Cargar el primer fragmento del Spinner por defecto
-        if (savedInstanceState == null) {
-            spinner.setSelection(0);
+            getSupportFragmentManager().beginTransaction().replace(R.id.fragment_container, new EnlaceProfileFragment()).commit();
         }
     }
 
-    public void replaceFragment(Fragment fragment, boolean addToBackStack, int containerId) {
+    private final BottomNavigationView.OnNavigationItemSelectedListener navListener = new BottomNavigationView.OnNavigationItemSelectedListener() {
+        @Override
+        public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+            Fragment selectedFragment = null;
+            int itemId = item.getItemId();
+            if (itemId == R.id.navigation_profile) {
+                selectedFragment = new EnlaceProfileFragment();
+            } else if (itemId == R.id.navigation_upload_docs) {
+                selectedFragment = new UploadDocumentsFragment();
+            } else if (itemId == R.id.navigation_upload_media) {
+                selectedFragment = new UploadMediaFragment();
+            } else if (itemId == R.id.navigation_calendar) {
+                selectedFragment = new CalendarFragment();
+            } else if (itemId == R.id.navigation_update_data) {
+                selectedFragment = new UpdateDataFragment();
+            }
+
+            if (selectedFragment != null) {
+                getSupportFragmentManager().beginTransaction().replace(R.id.fragment_container, selectedFragment).commit();
+            }
+            return true;
+        }
+    };
+
+    public void replaceFragment(Fragment fragment, boolean addToBackStack) {
         FragmentManager fragmentManager = getSupportFragmentManager();
         FragmentTransaction transaction = fragmentManager.beginTransaction();
-        transaction.replace(containerId, fragment);
+        transaction.replace(R.id.fragment_container, fragment);
         if (addToBackStack) {
             transaction.addToBackStack(null);
         }
         transaction.commit();
     }
+
+    private void subscribeToNotifications() {
+        FirebaseMessaging.getInstance().subscribeToTopic("all")
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        Log.d(TAG, "Enlace suscrito exitosamente al topic 'all'");
+                    } else {
+                        Log.e(TAG, "Error al suscribir al topic 'all': " + task.getException());
+                    }
+                });
+    }
 }
+

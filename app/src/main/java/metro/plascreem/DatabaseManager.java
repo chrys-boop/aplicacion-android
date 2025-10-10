@@ -32,7 +32,8 @@ public class DatabaseManager {
 
     public DatabaseManager() {
         mAuth = FirebaseAuth.getInstance();
-        mDatabase = FirebaseDatabase.getInstance().getReference();
+        mDatabase = FirebaseDatabase.getInstance("https://capacitacion-material-default-rtdb.firebaseio.com/").getReference();
+
         mStorageRef = FirebaseStorage.getInstance().getReference();
     }
 

@@ -65,6 +65,13 @@ public class EnlaceProfileFragment extends Fragment {
         return view;
     }
 
+    @Override
+    public void onResume() {
+        super.onResume();
+        // Recargar los datos del perfil cuando el fragmento se vuelve a mostrar
+        loadEnlaceData();
+    }
+
     private void loadEnlaceData() {
         FirebaseUser currentUser = mAuth.getCurrentUser();
         if (currentUser != null && isAdded()) {
@@ -75,10 +82,13 @@ public class EnlaceProfileFragment extends Fragment {
                     if (userData != null && isAdded()) {
                         String nombre = String.valueOf(userData.getOrDefault("nombreCompleto", "Nombre no disponible"));
                         String expediente = String.valueOf(userData.getOrDefault("numeroExpediente", "N/A"));
-                        String taller = String.valueOf(userData.getOrDefault("taller", "N/A"));
+                        String area = String.valueOf(userData.getOrDefault("Area", "N/A")); // Cambiado de "taller" a "area"
+                        String titularSuplente = String.valueOf(userData.getOrDefault("titularSuplente", "N/A")); // Nuevo campo
 
                         tvEnlaceName.setText(nombre);
-                        String profileDetails = "Expediente: " + expediente + "\n" + "Taller: " + taller;
+                        String profileDetails = "Expediente: " + expediente + "\n" +
+                                "Área: " + area + "\n" + // Etiqueta actualizada
+                                "Rol: " + titularSuplente; // Nueva línea para el rol
                         tvDatosPerfil.setText(profileDetails);
                     }
                 }

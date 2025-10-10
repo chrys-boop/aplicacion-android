@@ -70,32 +70,45 @@ public class CalendarFragment extends Fragment
 
     private void loadUserRole() {
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
-        if (currentUser != null) {
+        if (currentUser != null && isAdded()) {
             databaseManager.getUserDataMap(currentUser.getUid(), new DatabaseManager.UserDataMapListener() {
                 @Override
                 public void onDataReceived(Map<String, Object> userData) {
-                    userRole = (String) userData.get("userType");
-                    // Mostrar u ocultar el FAB según el rol
-                    if ("Administrador".equals(userRole) || "Personal_Administrativo".equals(userRole)) {
-                        binding.fabAddEvento.setVisibility(View.VISIBLE);
-                    } else {
-                        binding.fabAddEvento.setVisibility(View.GONE);
+                    if (isAdded()) {
+                        userRole = (String) userData.get("userType");
+                        updateFabVisibility();
                     }
                 }
 
                 @Override
                 public void onDataCancelled(String message) {
-                    // Ocultar el FAB si no se puede obtener el rol
-                    binding.fabAddEvento.setVisibility(View.GONE);
+                    if (isAdded()) {
+                        binding.fabAddEvento.setVisibility(View.GONE);
+                    }
                 }
             });
         }
     }
 
+    private void updateFabVisibility() {
+        if ("Administrador".equals(userRole) || "Personal_Administrativo".equals(userRole)) {
+            binding.fabAddEvento.setVisibility(View.VISIBLE);
+        } else {
+            binding.fabAddEvento.setVisibility(View.GONE);
+        }
+    }
+
+    private int getFragmentContainerId() {
+        if ("Administrador".equals(userRole)) {
+            return R.id.admin_fragment_container;
+        }
+        return R.id.fragment_container;
+    }
+
     private void handleFabClick() {
         if ("Administrador".equals(userRole) || "Personal_Administrativo".equals(userRole)) {
             getParentFragmentManager().beginTransaction()
-                    .replace(R.id.fragment_container, new CreateEventFragment())
+                    .replace(getFragmentContainerId(), new CreateEventFragment())
                     .addToBackStack(null)
                     .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
                     .commit();
@@ -108,13 +121,17 @@ public class CalendarFragment extends Fragment
         databaseManager.getEventsForDate(date, new DatabaseManager.EventsListener() {
             @Override
             public void onEventsReceived(List<Evento> events) {
-                eventosAdapter.setEventos(events);
-                showEmptyState(events.isEmpty());
+                if (isAdded()) {
+                    eventosAdapter.setEventos(events);
+                    showEmptyState(events.isEmpty());
+                }
             }
 
             @Override
             public void onCancelled(String message) {
-                Toast.makeText(getContext(), "Error al cargar eventos: " + message, Toast.LENGTH_SHORT).show();
+                if (isAdded()) {
+                    Toast.makeText(getContext(), "Error al cargar eventos: " + message, Toast.LENGTH_SHORT).show();
+                }
             }
         });
     }
@@ -149,7 +166,7 @@ public class CalendarFragment extends Fragment
 
         if (nextFragment != null) {
             getParentFragmentManager().beginTransaction()
-                    .replace(R.id.fragment_container, nextFragment)
+                    .replace(getFragmentContainerId(), nextFragment) // Usar el container ID correcto
                     .addToBackStack(null)
                     .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
                     .commit();

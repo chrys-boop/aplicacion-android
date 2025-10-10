@@ -8,10 +8,14 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
+import android.util.Log;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.firebase.messaging.FirebaseMessaging;
 
 public class Administrador extends AppCompatActivity {
+
+    private static final String TAG = "Administrador";
 
     private BottomNavigationView bottomNavigationView;
 
@@ -26,6 +30,9 @@ public class Administrador extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_administrador);
 
+
+        // Suscribir al usuario al topic \"all\" para recibir notificaciones
+        subscribeToNotifications();
         bottomNavigationView = findViewById(R.id.admin_bottom_navigation);
 
         // Listener para la navegación
@@ -61,5 +68,19 @@ public class Administrador extends AppCompatActivity {
         FragmentTransaction transaction = fragmentManager.beginTransaction();
         transaction.replace(R.id.admin_fragment_container, fragment);
         transaction.commit();
+    }
+
+    /**
+     * Suscribe al usuario al topic \"all\" para recibir notificaciones push
+     */
+    private void subscribeToNotifications() {
+        FirebaseMessaging.getInstance().subscribeToTopic("all")
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        Log.d(TAG, "Administrador suscrito exitosamente al topic 'all'");
+                    } else {
+                        Log.e(TAG, "Error al suscribir al topic 'all': " + task.getException());
+                    }
+                });
     }
 }

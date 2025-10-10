@@ -25,12 +25,12 @@ import java.util.List;
 
 public class WorkerManualsFragment extends Fragment implements FileAdapter.OnFileActionListener {
 
-    private static final String DATABASE_PATH = "manuales_pdf";
+    private static final String DATABASE_PATH = "uploads";
 
-    private RecyclerView recyclerViewManuals;
-    private ProgressBar progressBarManuals;
+    private RecyclerView recyclerViewFiles;
+    private ProgressBar progressBar;
     private FileAdapter fileAdapter;
-    private final List<FileMetadata> manualList = new ArrayList<>();
+    private final List<FileMetadata> fileList = new ArrayList<>();
     private DatabaseReference databaseReference;
 
     @Nullable
@@ -40,49 +40,63 @@ public class WorkerManualsFragment extends Fragment implements FileAdapter.OnFil
 
         databaseReference = FirebaseDatabase.getInstance().getReference(DATABASE_PATH);
 
-        recyclerViewManuals = view.findViewById(R.id.recycler_view_manuals);
-        progressBarManuals = view.findViewById(R.id.progress_bar_manuals);
+        recyclerViewFiles = view.findViewById(R.id.recycler_view_manuals);
+        progressBar = view.findViewById(R.id.progress_bar_manuals);
 
         setupRecyclerView();
-        loadManuals();
+        loadFiles();
 
         return view;
     }
 
     private void setupRecyclerView() {
-        recyclerViewManuals.setLayoutManager(new LinearLayoutManager(getContext()));
-        // El 'false' es crucial para ocultar el botón de eliminar
-        fileAdapter = new FileAdapter(manualList, this, false);
-        recyclerViewManuals.setAdapter(fileAdapter);
+        recyclerViewFiles.setLayoutManager(new LinearLayoutManager(getContext()));
+        fileAdapter = new FileAdapter(fileList, this, false);
+        recyclerViewFiles.setAdapter(fileAdapter);
     }
 
-    private void loadManuals() {
-        progressBarManuals.setVisibility(View.VISIBLE);
+    private void loadFiles() {
+        progressBar.setVisibility(View.VISIBLE);
         databaseReference.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                manualList.clear();
-                for (DataSnapshot postSnapshot : snapshot.getChildren()) {
-                    FileMetadata metadata = postSnapshot.getValue(FileMetadata.class);
-                    manualList.add(metadata);
+                if (isAdded()) {
+                    fileList.clear();
+                    for (DataSnapshot postSnapshot : snapshot.getChildren()) {
+                        FileMetadata metadata = postSnapshot.getValue(FileMetadata.class);
+                        // ¡NUEVO! Filtrar para que solo se muestren los archivos PDF.
+                        if (metadata != null && metadata.getUrl() != null &&
+                                metadata.getUrl().toLowerCase().endsWith(".pdf")) {
+                            fileList.add(metadata);
+                        }
+                    }
+                    fileAdapter.notifyDataSetChanged();
+                    progressBar.setVisibility(View.GONE);
                 }
-                fileAdapter.notifyDataSetChanged();
-                progressBarManuals.setVisibility(View.GONE);
             }
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
-                Toast.makeText(getContext(), "Error al cargar los manuales.", Toast.LENGTH_SHORT).show();
-                progressBarManuals.setVisibility(View.GONE);
+                if (isAdded()) {
+                    Toast.makeText(getContext(), "Error al cargar los archivos.", Toast.LENGTH_SHORT).show();
+                    progressBar.setVisibility(View.GONE);
+                }
             }
         });
     }
 
     @Override
     public void onViewFile(FileMetadata file) {
+        if (file == null || file.getUrl() == null || file.getUrl().isEmpty()) {
+            Toast.makeText(getContext(), "URL del archivo no válida", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Simplificado: ya que solo mostramos PDFs, el tipo MIME es conocido.
         Intent intent = new Intent(Intent.ACTION_VIEW);
         intent.setDataAndType(Uri.parse(file.getUrl()), "application/pdf");
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
         try {
             startActivity(intent);
         } catch (Exception e) {
@@ -92,6 +106,6 @@ public class WorkerManualsFragment extends Fragment implements FileAdapter.OnFil
 
     @Override
     public void onDeleteFile(FileMetadata file) {
-        // No hacer nada aquí. El trabajador no puede eliminar archivos.
+        // La lógica para eliminar no se implementa aquí, ya que los trabajadores no pueden borrar.
     }
 }

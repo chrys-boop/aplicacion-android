@@ -130,8 +130,8 @@ public class EditProfileFragment extends Fragment {
                 public void onSuccess() {
                     if (isAdded() && getActivity() != null) {
                         Toast.makeText(getContext(), "Perfil actualizado correctamente.", Toast.LENGTH_SHORT).show();
-                        // Forzar el regreso inmediato a la pantalla anterior
-                        getParentFragmentManager().popBackStackImmediate();
+                        // Regresar al fragmento anterior
+                        getParentFragmentManager().popBackStack();
                     }
                 }
 
