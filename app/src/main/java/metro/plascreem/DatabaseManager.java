@@ -167,9 +167,9 @@ public class DatabaseManager {
 
 
     public void getUserDataMap(String userId, final UserDataMapListener listener) {
-        mDatabase.child("users").child(userId).get().addOnCompleteListener(task -> {
-            if (task.isSuccessful()) {
-                DataSnapshot snapshot = task.getResult();
+        mDatabase.child("users").child(userId).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
                 if (snapshot.exists()) {
                     @SuppressWarnings("unchecked")
                     Map<String, Object> userData = (Map<String, Object>) snapshot.getValue();
@@ -177,8 +177,11 @@ public class DatabaseManager {
                 } else {
                     listener.onDataCancelled("No data available for this user.");
                 }
-            } else {
-                listener.onDataCancelled(task.getException().getMessage());
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                listener.onDataCancelled(error.getMessage());
             }
         });
     }

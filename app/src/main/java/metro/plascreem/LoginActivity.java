@@ -14,7 +14,7 @@ public class LoginActivity extends AppCompatActivity {
 
     private EditText etEmail, etPassword;
     private Button btnLogin;
-    private TextView tvGoToRegister; // Nuevo TextView
+    private TextView tvGoToRegister;
     private DatabaseManager databaseManager;
 
     @Override
@@ -27,7 +27,7 @@ public class LoginActivity extends AppCompatActivity {
         etEmail = findViewById(R.id.et_username);
         etPassword = findViewById(R.id.et_password);
         btnLogin = findViewById(R.id.btn_login);
-        tvGoToRegister = findViewById(R.id.tv_go_to_register); // Inicializar TextView
+        tvGoToRegister = findViewById(R.id.tv_go_to_register);
 
         btnLogin.setOnClickListener(v -> {
             String email = etEmail.getText().toString().trim();
@@ -53,7 +53,6 @@ public class LoginActivity extends AppCompatActivity {
             });
         });
 
-        // Listener para el nuevo TextView
         tvGoToRegister.setOnClickListener(v -> {
             Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
             startActivity(intent);
@@ -64,12 +63,13 @@ public class LoginActivity extends AppCompatActivity {
         databaseManager.getUserDataMap(userId, new DatabaseManager.UserDataMapListener() {
             @Override
             public void onDataReceived(Map<String, Object> userData) {
-                if (userData == null || !userData.containsKey("userType")) {
-                    Toast.makeText(LoginActivity.this, "No se pudo determinar el rol del usuario.", Toast.LENGTH_SHORT).show();
+                if (userData == null || !(userData.get("userType") instanceof String)) {
+                    Toast.makeText(LoginActivity.this, "No se pudo determinar el rol del usuario. El rol no está definido o es inválido.", Toast.LENGTH_LONG).show();
                     return;
                 }
 
-                String userType = (String) userData.get("userType");
+                // Limpia el string de espacios al principio y al final para evitar errores.
+                String userType = ((String) userData.get("userType")).trim();
 
                 Intent intent;
                 switch (userType) {
@@ -79,7 +79,7 @@ public class LoginActivity extends AppCompatActivity {
                     case "Enlaces":
                         intent = new Intent(LoginActivity.this, Enlaces.class);
                         break;
-                    case "Personal":
+                    case "Personal Administrativo":
                         intent = new Intent(LoginActivity.this, Personal_Administrativo.class);
                         break;
                     case "Trabajadores":
@@ -90,7 +90,7 @@ public class LoginActivity extends AppCompatActivity {
                         intent.putExtra("NUMERO_EXPEDIENTE", expediente);
                         break;
                     default:
-                        Toast.makeText(LoginActivity.this, "Rol de usuario no reconocido.", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(LoginActivity.this, "Rol de usuario no reconocido: [" + userType + "]", Toast.LENGTH_LONG).show();
                         return;
                 }
                 startActivity(intent);

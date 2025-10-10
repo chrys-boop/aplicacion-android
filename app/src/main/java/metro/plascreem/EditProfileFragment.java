@@ -128,10 +128,10 @@ public class EditProfileFragment extends Fragment {
             databaseManager.updateUserProfile(userId, fullName, email, expediente, taller, enlaceOrigen, horario, new DatabaseManager.DataSaveListener() {
                 @Override
                 public void onSuccess() {
-                    if (isAdded()) {
+                    if (isAdded() && getActivity() != null) {
                         Toast.makeText(getContext(), "Perfil actualizado correctamente.", Toast.LENGTH_SHORT).show();
-                        // Regresar al fragmento de perfil anterior
-                        getParentFragmentManager().popBackStack();
+                        // Forzar el regreso inmediato a la pantalla anterior
+                        getParentFragmentManager().popBackStackImmediate();
                     }
                 }
 
@@ -149,4 +149,3 @@ public class EditProfileFragment extends Fragment {
         }
     }
 }
-

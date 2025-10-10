@@ -61,5 +61,7 @@
     <string name="file_type_icon_description">Icono que representa el tipo de archivo</string>
     <string name="view_file_button_description">Botón para ver el archivo</string>
     <string name="delete_file_button_description">Botón para borrar el archivo</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
 
 </resources>
