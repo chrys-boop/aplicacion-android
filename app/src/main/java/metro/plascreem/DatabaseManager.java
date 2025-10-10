@@ -8,10 +8,11 @@ import androidx.annotation.NonNull;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.firestore.DocumentSnapshot;
-import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.Query;
-import com.google.firebase.firestore.QuerySnapshot;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
@@ -24,14 +25,14 @@ import java.util.Map;
 public class DatabaseManager {
 
     private final FirebaseAuth mAuth;
-    private final FirebaseFirestore mFirestore;
+    private final DatabaseReference mDatabase;
     private final StorageReference mStorageRef;
     private static final String TAG = "DatabaseManager";
 
 
     public DatabaseManager() {
         mAuth = FirebaseAuth.getInstance();
-        mFirestore = FirebaseFirestore.getInstance();
+        mDatabase = FirebaseDatabase.getInstance("https://capacitacion-material-default-rtdb.firebaseio.com/").getReference();
         mStorageRef = FirebaseStorage.getInstance().getReference();
     }
 
@@ -89,14 +90,15 @@ public class DatabaseManager {
                         userData.put("numeroExpediente", expediente);
                         userData.put("lastConnection", System.currentTimeMillis());
 
-                        mFirestore.collection("users").document(userId).set(userData)
-                                .addOnSuccessListener(aVoid -> {
-                                    Log.d(TAG, "Usuario registrado exitosamente en Firestore");
-                                    listener.onSuccess();
-                                })
-                                .addOnFailureListener(e -> {
-                                    Log.e(TAG, "Error al guardar datos de usuario en Firestore", e);
-                                    listener.onFailure(e.getMessage());
+                        mDatabase.child("users").child(userId).setValue(userData)
+                                .addOnCompleteListener(dbTask -> {
+                                    if (dbTask.isSuccessful()) {
+                                        Log.d(TAG, "Usuario registrado exitosamente en Realtime Database");
+                                        listener.onSuccess();
+                                    } else {
+                                        Log.e(TAG, "Error al guardar datos de usuario.", dbTask.getException());
+                                        listener.onFailure(dbTask.getException().getMessage());
+                                    }
                                 });
                     } else {
                         listener.onFailure(task.getException().getMessage());
@@ -110,13 +112,8 @@ public class DatabaseManager {
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
                         String userId = mAuth.getCurrentUser().getUid();
-                        mFirestore.collection("users").document(userId)
-                                .update("lastConnection", System.currentTimeMillis())
-                                .addOnSuccessListener(aVoid -> listener.onSuccess())
-                                .addOnFailureListener(e -> {
-                                    Log.e(TAG, "Error actualizando lastConnection", e);
-                                    listener.onSuccess();
-                                });
+                        mDatabase.child("users").child(userId).child("lastConnection").setValue(System.currentTimeMillis());
+                        listener.onSuccess();
                     } else {
                         listener.onFailure(task.getException().getMessage());
                     }
@@ -124,64 +121,68 @@ public class DatabaseManager {
     }
 
     public void getAllUsers(AllUsersListener listener) {
-        mFirestore.collection("users").get()
-                .addOnSuccessListener(querySnapshot -> {
-                    List<User> userList = new ArrayList<>();
-                    for (DocumentSnapshot document : querySnapshot.getDocuments()) {
-                        User user = document.toObject(User.class);
-                        if (user != null) {
-                            user.setUid(document.getId());
-                            userList.add(user);
-                        }
+        mDatabase.child("users").addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                List<User> userList = new ArrayList<>();
+                for (DataSnapshot userSnapshot : snapshot.getChildren()) {
+                    User user = userSnapshot.getValue(User.class);
+                    if (user != null) {
+                        user.setUid(userSnapshot.getKey());
+                        userList.add(user);
                     }
-                    listener.onUsersReceived(userList);
-                })
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "Error obteniendo usuarios", e);
-                    listener.onCancelled(e.getMessage());
-                });
+                }
+                listener.onUsersReceived(userList);
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                listener.onCancelled(error.getMessage());
+            }
+        });
     }
 
     public void getFilesUploadedByUser(String userId, FileHistoryListener listener) {
-        mFirestore.collection("files")
-                .whereEqualTo("uploaderId", userId)
-                .get()
-                .addOnSuccessListener(querySnapshot -> {
-                    List<FileMetadata> fileList = new ArrayList<>();
-                    for (DocumentSnapshot document : querySnapshot.getDocuments()) {
-                        FileMetadata metadata = document.toObject(FileMetadata.class);
-                        if (metadata != null) {
-                            metadata.setFileId(document.getId());
-                            fileList.add(metadata);
-                        }
+        mDatabase.child("files").orderByChild("uploaderId").equalTo(userId).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                List<FileMetadata> fileList = new ArrayList<>();
+                for (DataSnapshot fileSnapshot : snapshot.getChildren()) {
+                    FileMetadata metadata = fileSnapshot.getValue(FileMetadata.class);
+                    if (metadata != null) {
+                        metadata.setFileId(fileSnapshot.getKey());
+                        fileList.add(metadata);
                     }
-                    listener.onHistoryReceived(fileList);
-                })
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "Error obteniendo archivos del usuario", e);
-                    listener.onCancelled(e.getMessage());
-                });
+                }
+                listener.onHistoryReceived(fileList);
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                listener.onCancelled(error.getMessage());
+            }
+        });
     }
 
 
     public void getUserDataMap(String userId, final UserDataMapListener listener) {
-        mFirestore.collection("users").document(userId).get()
-                .addOnSuccessListener(documentSnapshot -> {
-                    if (documentSnapshot.exists()) {
-                        Map<String, Object> userData = documentSnapshot.getData();
-                        if (userData != null) {
-                            listener.onDataReceived(userData);
-                        } else {
-                            listener.onDataCancelled("No data available for this user.");
-                        }
-                    } else {
-                        listener.onDataCancelled("User document does not exist.");
-                    }
-                })
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "Error obteniendo datos del usuario", e);
-                    listener.onDataCancelled(e.getMessage());
-                });
+        mDatabase.child("users").child(userId).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (snapshot.exists()) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> userData = (Map<String, Object>) snapshot.getValue();
+                    listener.onDataReceived(userData);
+                } else {
+                    listener.onDataCancelled("No data available for this user.");
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                listener.onDataCancelled(error.getMessage());
+            }
+        });
     }
 
     public void uploadFile(Uri fileUri, String fileName, String uploaderId, UploadListener listener) {
@@ -219,23 +220,22 @@ public class DatabaseManager {
 
 
     public void saveFileMetadata(String fileName, String downloadUrl, String storagePath, long size, String uploaderId, DataSaveListener listener) {
-        Map<String, Object> fileData = new HashMap<>();
-        fileData.put("fileName", fileName);
-        fileData.put("downloadUrl", downloadUrl);
-        fileData.put("storagePath", storagePath);
-        fileData.put("uploaderId", uploaderId);
-        fileData.put("size", size);
-        fileData.put("timestamp", System.currentTimeMillis());
+        String fileId = mDatabase.child("files").push().getKey();
+        FileMetadata fileData = new FileMetadata(fileId, fileName, downloadUrl, storagePath, uploaderId, size, System.currentTimeMillis());
 
-        mFirestore.collection("files").add(fileData)
-                .addOnSuccessListener(documentReference -> {
-                    Log.d(TAG, "Archivo guardado con ID: " + documentReference.getId());
-                    listener.onSuccess();
-                })
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "Error guardando metadata del archivo", e);
-                    listener.onFailure(e.getMessage());
-                });
+        if (fileId != null) {
+            mDatabase.child("files").child(fileId).setValue(fileData)
+                    .addOnSuccessListener(aVoid -> {
+                        Log.d(TAG, "Archivo guardado con ID: " + fileId);
+                        listener.onSuccess();
+                    })
+                    .addOnFailureListener(e -> {
+                        Log.e(TAG, "Error guardando metadata del archivo", e);
+                        listener.onFailure(e.getMessage());
+                    });
+        } else {
+            listener.onFailure("Could not generate file ID.");
+        }
     }
 
     public void updateUserProfile(String userId, String fullName, String email, String expediente, String taller, String enlaceOrigen, String horario, DataSaveListener listener) {
@@ -247,51 +247,48 @@ public class DatabaseManager {
         updatedData.put("enlaceOrigen", enlaceOrigen);
         updatedData.put("horario", horario);
 
-        mFirestore.collection("users").document(userId).update(updatedData)
+        mDatabase.child("users").child(userId).updateChildren(updatedData)
                 .addOnSuccessListener(aVoid -> {
-                    Log.d(TAG, "Perfil actualizado exitosamente");
+                    Log.d(TAG, "Perfil actualizado exitosamente en Realtime Database");
                     listener.onSuccess();
                 })
                 .addOnFailureListener(e -> {
-                    Log.e(TAG, "Error actualizando perfil", e);
+                    Log.e(TAG, "Error actualizando perfil en Realtime Database", e);
                     listener.onFailure(e.getMessage());
                 });
     }
 
     public void getEventsForDate(String date, EventsListener listener) {
-        mFirestore.collection("events")
-                .whereEqualTo("fecha", date)
-                .get()
-                .addOnSuccessListener(querySnapshot -> {
-                    List<Evento> events = new ArrayList<>();
-                    for (DocumentSnapshot document : querySnapshot.getDocuments()) {
-                        Evento event = document.toObject(Evento.class);
-                        if (event != null) {
-                            event.setId(document.getId());
-                            events.add(event);
-                        }
+        mDatabase.child("events").orderByChild("fecha").equalTo(date).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                List<Evento> events = new ArrayList<>();
+                for (DataSnapshot eventSnapshot : snapshot.getChildren()) {
+                    Evento event = eventSnapshot.getValue(Evento.class);
+                    if (event != null) {
+                        events.add(event);
                     }
-                    listener.onEventsReceived(events);
-                })
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "Error obteniendo eventos", e);
-                    listener.onCancelled(e.getMessage());
-                });
+                }
+                listener.onEventsReceived(events);
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                listener.onCancelled(error.getMessage());
+            }
+        });
     }
 
     public void saveEvent(Evento event, DataSaveListener listener) {
         String eventId = event.getId();
-
-        Map<String, Object> eventData = new HashMap<>();
-        eventData.put("fecha", event.getFecha());
-        eventData.put("hora", event.getHora());
-        eventData.put("titulo", event.getTitulo());
-        eventData.put("descripcion", event.getDescripcion());
-
         if (eventId == null || eventId.isEmpty()) {
-            mFirestore.collection("events").add(eventData)
-                    .addOnSuccessListener(documentReference -> {
-                        Log.d(TAG, "Evento creado con ID: " + documentReference.getId());
+            eventId = mDatabase.child("events").push().getKey();
+        }
+
+        if (eventId != null) {
+            mDatabase.child("events").child(eventId).setValue(event)
+                    .addOnSuccessListener(aVoid -> {
+                        Log.d(TAG, "Evento guardado exitosamente");
                         listener.onSuccess();
                     })
                     .addOnFailureListener(e -> {
@@ -299,15 +296,7 @@ public class DatabaseManager {
                         listener.onFailure(e.getMessage());
                     });
         } else {
-            mFirestore.collection("events").document(eventId).set(eventData)
-                    .addOnSuccessListener(aVoid -> {
-                        Log.d(TAG, "Evento actualizado");
-                        listener.onSuccess();
-                    })
-                    .addOnFailureListener(e -> {
-                        Log.e(TAG, "Error actualizando evento", e);
-                        listener.onFailure(e.getMessage());
-                    });
+            listener.onFailure("No se pudo generar un ID para el evento.");
         }
     }
 
@@ -316,7 +305,7 @@ public class DatabaseManager {
             listener.onFailure("ID de archivo inválido.");
             return;
         }
-        mFirestore.collection("files").document(fileId).delete()
+        mDatabase.child("files").child(fileId).removeValue()
                 .addOnSuccessListener(aVoid -> {
                     Log.d(TAG, "Registro de archivo eliminado");
                     listener.onSuccess();
