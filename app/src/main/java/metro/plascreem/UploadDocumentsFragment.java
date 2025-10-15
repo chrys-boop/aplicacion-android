@@ -1,3 +1,4 @@
+
 package metro.plascreem;
 
 import android.content.Intent;
@@ -6,13 +7,21 @@ import android.os.Bundle;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
+import com.android.volley.Request;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.Volley;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import metro.plascreem.databinding.FragmentUploadDocumentsBinding;
 import static android.app.Activity.RESULT_OK;
@@ -32,7 +41,8 @@ public class UploadDocumentsFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         binding = FragmentUploadDocumentsBinding.inflate(inflater, container, false);
-        databaseManager = new DatabaseManager();
+        // Correctly initialize DatabaseManager with the required context.
+        databaseManager = new DatabaseManager(getContext());
         return binding.getRoot();
     }
 
@@ -79,19 +89,34 @@ public class UploadDocumentsFragment extends Fragment {
             return;
         }
         String uploaderId = currentUser.getUid();
+        // Get the user's display name for the notification.
+        String uploaderName = currentUser.getDisplayName();
+        if (uploaderName == null || uploaderName.isEmpty()) {
+            // Use email as a fallback if the display name is not set.
+            uploaderName = currentUser.getEmail();
+            if (uploaderName == null || uploaderName.isEmpty()) {
+                uploaderName = "Usuario Desconocido"; // Final fallback.
+            }
+        }
 
         String fileName = selectedFileUri.getLastPathSegment();
         if (fileName == null) {
             fileName = "unknown_file_" + System.currentTimeMillis();
         }
 
-        // Llamada corregida a uploadFile, ahora incluye el uploaderId
-        databaseManager.uploadFile(fileUri, fileName, uploaderId, new DatabaseManager.UploadListener() {
+        // AUDITORÍA: Final variables needed for the inner class
+        final String finalUploaderName = uploaderName;
+        final String finalFileName = fileName;
+
+        // Updated call to uploadFile, now including the uploader's name.
+        databaseManager.uploadFile(fileUri, fileName, uploaderId, uploaderName, new DatabaseManager.UploadListener() {
             @Override
             public void onSuccess(String downloadUrl) {
-                // El guardado de metadatos ahora se hace dentro de DatabaseManager.
-                // Aquí solo notificamos el éxito y volvemos.
                 Toast.makeText(getContext(), "Documento subido con éxito.", Toast.LENGTH_SHORT).show();
+
+                // AUDITORÍA: Llamar a la función de Netlify para notificar la subida.
+                sendAuditNotification(finalUploaderName, finalFileName, "Documento");
+
                 if (getParentFragmentManager() != null) {
                     getParentFragmentManager().popBackStack();
                 }
@@ -108,6 +133,34 @@ public class UploadDocumentsFragment extends Fragment {
                 binding.tvFileStatus.setText(String.format("Subiendo... %.2f%%", progress));
             }
         });
+    }
+
+    // AUDITORÍA: Nuevo método para enviar la notificación de auditoría.
+    private void sendAuditNotification(String uploaderName, String fileName, String fileType) {
+        if (getContext() == null) {
+            Log.e("AuditError", "Context is null, cannot send audit notification.");
+            return;
+        }
+
+        String auditUrl = "https://capacitacion-mrodante.netlify.app/.netlify/functions/send-audit-notification";
+
+        JSONObject postData = new JSONObject();
+        try {
+            postData.put("userId", uploaderName);
+            postData.put("action", "Subida de " + fileType);
+            postData.put("details", "Archivo: " + fileName);
+        } catch (JSONException e) {
+            Log.e("AuditError", "Error creating audit JSON", e);
+            return;
+        }
+
+        JsonObjectRequest auditRequest = new JsonObjectRequest(Request.Method.POST, auditUrl, postData,
+                response -> Log.d("AuditSuccess", "Audit notification sent for " + fileName),
+                error -> Log.e("AuditError", "Failed to send audit notification", error)
+        );
+
+        // Añadir la petición a la cola de Volley.
+        Volley.newRequestQueue(getContext()).add(auditRequest);
     }
 
     @Override

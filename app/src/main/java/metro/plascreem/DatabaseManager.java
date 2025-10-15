@@ -1,10 +1,16 @@
+
 package metro.plascreem;
 
+import android.content.Context;
 import android.net.Uri;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
 
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.Volley;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
@@ -17,6 +23,9 @@ import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -28,13 +37,16 @@ public class DatabaseManager {
     private final DatabaseReference mDatabase;
     private final StorageReference mStorageRef;
     private static final String TAG = "DatabaseManager";
+    private final RequestQueue requestQueue;
+    private final Context context;
 
 
-    public DatabaseManager() {
+    public DatabaseManager(Context context) {
+        this.context = context.getApplicationContext();
         mAuth = FirebaseAuth.getInstance();
         mDatabase = FirebaseDatabase.getInstance("https://capacitacion-material-default-rtdb.firebaseio.com/").getReference();
-
         mStorageRef = FirebaseStorage.getInstance().getReference();
+        this.requestQueue = Volley.newRequestQueue(this.context);
     }
 
     // --- Interfaces para callbacks ---
@@ -95,6 +107,9 @@ public class DatabaseManager {
                         userData.put("nombreCompleto", fullName);
                         userData.put("numeroExpediente", expediente);
                         userData.put("lastConnection", System.currentTimeMillis());
+                        // --- CAMPOS NUEVOS AÑADIDOS PARA CONSISTENCIA ---
+                        userData.put("area", ""); // Campo para el área o taller del usuario, leído por AdminProfileFragment
+                        userData.put("titularSuplente", ""); // Campo para el rol específico, leído por AdminProfileFragment
 
                         mDatabase.child("users").child(userId).setValue(userData)
                                 .addOnCompleteListener(dbTask -> {
@@ -187,7 +202,7 @@ public class DatabaseManager {
         });
     }
 
-    public void uploadFile(Uri fileUri, String fileName, String uploaderId, UploadListener listener) {
+    public void uploadFile(Uri fileUri, String fileName, String uploaderId, String uploaderName, UploadListener listener) {
         String storagePath = "documents/" + uploaderId + "/" + fileName;
         StorageReference fileRef = mStorageRef.child(storagePath);
 
@@ -199,6 +214,7 @@ public class DatabaseManager {
                         saveFileMetadata(fileName, downloadUri.toString(), storagePath, sizeBytes, uploaderId, new DataSaveListener() {
                             @Override
                             public void onSuccess() {
+                                triggerAuditNotification("upload", fileName, uploaderName);
                                 listener.onSuccess(downloadUri.toString());
                             }
 
@@ -233,6 +249,55 @@ public class DatabaseManager {
             listener.onFailure("Could not generate file ID.");
         }
     }
+
+    public void updateUserFcmToken(String userId, String token, @NonNull final DataSaveListener listener) {
+        if (userId == null || userId.isEmpty() || token == null || token.isEmpty()) {
+            Log.w(TAG, "No se puede actualizar el token de FCM: userId o token son nulos/vacíos.");
+            listener.onFailure("UserID o Token inválido.");
+            return;
+        }
+
+        Log.d(TAG, "Actualizando token de FCM para el usuario: " + userId);
+        mDatabase.child("users").child(userId).child("fcmToken").setValue(token)
+                .addOnSuccessListener(aVoid -> {
+                    Log.d(TAG, "Token de FCM actualizado exitosamente.");
+                    listener.onSuccess();
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Error al actualizar el token de FCM.", e);
+                    listener.onFailure(e.getMessage());
+                });
+    }
+
+    public void logDownloadEvent(String userId, String userName, String fileName, @NonNull final DataSaveListener listener) {
+        if (userId == null || userId.isEmpty() || fileName == null || fileName.isEmpty()) {
+            listener.onFailure("UserID o FileName inválido.");
+            return;
+        }
+
+        String downloadId = mDatabase.child("downloads").push().getKey();
+        if (downloadId == null) {
+            listener.onFailure("No se pudo generar un ID para el evento de descarga.");
+            return;
+        }
+
+        Map<String, Object> downloadData = new HashMap<>();
+        downloadData.put("downloaderId", userId);
+        downloadData.put("fileName", fileName);
+        downloadData.put("timestamp", System.currentTimeMillis());
+
+        mDatabase.child("downloads").child(downloadId).setValue(downloadData)
+                .addOnSuccessListener(aVoid -> {
+                    Log.d(TAG, "Evento de descarga registrado para el usuario: " + userId);
+                    triggerAuditNotification("download", fileName, userName);
+                    listener.onSuccess();
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Error al registrar el evento de descarga.", e);
+                    listener.onFailure(e.getMessage());
+                });
+    }
+
 
     public void updateUserProfile(String userId, String fullName, String email, String expediente, String taller, String enlaceOrigen, String horario, DataSaveListener listener) {
         Map<String, Object> updatedData = new HashMap<>();
@@ -292,5 +357,27 @@ public class DatabaseManager {
         mDatabase.child("files").child(fileId).removeValue()
                 .addOnSuccessListener(aVoid -> listener.onSuccess())
                 .addOnFailureListener(e -> listener.onFailure(e.getMessage()));
+    }
+
+    private void triggerAuditNotification(String eventType, String fileName, String user) {
+        String url = "https://ubiquitous-pithivier-c55883.netlify.app/.netlify/functions/send-audit-notification";
+
+        JSONObject postData = new JSONObject();
+        try {
+            postData.put("eventType", eventType);
+            postData.put("fileName", fileName);
+            postData.put("user", user);
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating JSON for audit notification", e);
+            return;
+        }
+
+        JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(Request.Method.POST, url,
+                postData,
+                response -> Log.i(TAG, "Audit notification sent successfully."),
+                error -> Log.e(TAG, "Error sending audit notification: " + error.toString())
+        );
+
+        requestQueue.add(jsonObjectRequest);
     }
 }

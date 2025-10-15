@@ -29,7 +29,7 @@ public class RegisterActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.fragment_register_activity);
 
-        databaseManager = new DatabaseManager();
+        databaseManager = new DatabaseManager(this);
 
         // Inicializar vistas
         etEmail = findViewById(R.id.et_register_email);

@@ -35,7 +35,7 @@ public class CreateEventFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         binding = FragmentCreateEventBinding.inflate(inflater, container, false);
-        databaseManager = new DatabaseManager();
+        databaseManager = new DatabaseManager(getContext());
 
         // Configurar el Spinner (desplegable) para el tipo de evento
         ArrayAdapter<String> adapter = new ArrayAdapter<>(getContext(),

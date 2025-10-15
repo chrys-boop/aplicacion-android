@@ -32,7 +32,7 @@ public class EnlaceProfileFragment extends Fragment {
 
         // Inicializar Firebase y DatabaseManager
         mAuth = FirebaseAuth.getInstance();
-        databaseManager = new DatabaseManager();
+        databaseManager = new DatabaseManager(getContext());
 
         // Inicializar vistas
         tvEnlaceName = view.findViewById(R.id.tv_enlace_name);

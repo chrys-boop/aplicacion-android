@@ -15,12 +15,15 @@ import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
-
+import metro.plascreem.BuildConfig;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.HashMap;
 import java.util.Map;
+
+// Import para la clase BuildConfig generada
+
 
 public class SendNotificationFragment extends Fragment {
 
@@ -28,8 +31,8 @@ public class SendNotificationFragment extends Fragment {
     private Button btnSendNotification;
     private RequestQueue requestQueue;
 
-    // --- ¡CLAVE YA INSERTADA! ---
-    private final String FCM_SERVER_KEY = "BCIGKBSueN26-106y122fTCtA85RQQ7_-Jmy1LsLhXiBPeAtS-tpu4gMq-tkAv67594iUeQN0rNEhpxtDR6mRUE";
+    // --- LA CLAVE DEL SERVIDOR FCM AHORA SE OBTIENE DE FORMA SEGURA ---
+    private final String FCM_SERVER_KEY = BuildConfig.FCM_SERVER_KEY;
     private final String FCM_API_URL = "https://fcm.googleapis.com/fcm/send";
 
     @Nullable

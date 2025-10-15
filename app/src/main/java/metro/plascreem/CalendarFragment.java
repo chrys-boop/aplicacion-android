@@ -36,7 +36,7 @@ public class CalendarFragment extends Fragment
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         binding = FragmentCalendarBinding.inflate(inflater, container, false);
-        databaseManager = new DatabaseManager();
+        databaseManager = new DatabaseManager(getContext());
         return binding.getRoot();
     }
 

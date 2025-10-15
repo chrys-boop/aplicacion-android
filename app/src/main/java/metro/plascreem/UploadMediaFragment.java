@@ -1,3 +1,4 @@
+
 package metro.plascreem;
 
 import android.app.Activity;
@@ -11,13 +12,20 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Toast;
 
+import com.android.volley.Request;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.Volley;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import metro.plascreem.databinding.FragmentUploadMediaBinding;
 
@@ -28,7 +36,7 @@ public class UploadMediaFragment extends Fragment {
     private String selectedFileName = null;
     private DatabaseManager databaseManager;
 
-    // ActivityResultLauncher para el selector de archivos (método moderno)
+    // ActivityResultLauncher for the file picker (modern method)
     private final ActivityResultLauncher<Intent> mediaPickerLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
             result -> {
@@ -36,12 +44,13 @@ public class UploadMediaFragment extends Fragment {
                     selectedFileUri = result.getData().getData();
                     selectedFileName = getFileNameFromUri(selectedFileUri);
 
-                    // Actualizar UI con el archivo seleccionado
+                    // Update UI with the selected file
                     binding.tvMediaStatus.setText("Listo para subir: " + selectedFileName);
                     binding.btnSubirMedia.setText("Iniciar Subida");
                     binding.btnSubirMedia.setEnabled(true);
                 } else {
-                    Toast.makeText(getContext(), "Selección de archivo cancelada.", Toast.LENGTH_SHORT).show();
+                    // Using the custom Toast
+                    ToastUtils.showShortToast(getActivity(), "Selección de archivo cancelada.");
                     resetUploadState();
                 }
             });
@@ -51,7 +60,8 @@ public class UploadMediaFragment extends Fragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         binding = FragmentUploadMediaBinding.inflate(inflater, container, false);
-        databaseManager = new DatabaseManager();
+        // Correctly initialize DatabaseManager with the required context.
+        databaseManager = new DatabaseManager(getContext());
         return binding.getRoot();
     }
 
@@ -78,26 +88,43 @@ public class UploadMediaFragment extends Fragment {
     private void uploadMediaFile() {
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (selectedFileUri == null || selectedFileName == null) {
-            Toast.makeText(getContext(), "No hay archivo seleccionado.", Toast.LENGTH_SHORT).show();
+            ToastUtils.showShortToast(getActivity(), "No hay archivo seleccionado.");
             return;
         }
         if (currentUser == null) {
-            Toast.makeText(getContext(), "Error: Usuario no autenticado.", Toast.LENGTH_SHORT).show();
+            ToastUtils.showShortToast(getActivity(), "Error: Usuario no autenticado.");
             return;
         }
 
-        // Inhabilitar UI para la subida
+        // Disable UI for upload
         binding.btnSubirMedia.setEnabled(false);
         binding.progressBar.setVisibility(View.VISIBLE);
 
         String uploaderId = currentUser.getUid();
+        // Get the user's display name for the notification.
+        String uploaderName = currentUser.getDisplayName();
+        if (uploaderName == null || uploaderName.isEmpty()) {
+            // Use email as a fallback if the display name is not set.
+            uploaderName = currentUser.getEmail();
+            if (uploaderName == null || uploaderName.isEmpty()) {
+                uploaderName = "Usuario Desconocido"; // Final fallback.
+            }
+        }
 
-        // Llamada al método estandarizado que se encarga de todo
-        databaseManager.uploadFile(selectedFileUri, selectedFileName, uploaderId, new DatabaseManager.UploadListener() {
+        // AUDITORÍA: Final variables needed for the inner class
+        final String finalUploaderName = uploaderName;
+        final String finalFileName = selectedFileName;
+
+        // Updated call to uploadFile, now including the uploader's name.
+        databaseManager.uploadFile(selectedFileUri, selectedFileName, uploaderId, uploaderName, new DatabaseManager.UploadListener() {
             @Override
             public void onSuccess(String downloadUrl) {
-                Toast.makeText(getContext(), "Archivo subido con éxito.", Toast.LENGTH_SHORT).show();
-                // La subida fue exitosa, volver al fragmento anterior (Calendario)
+                ToastUtils.showShortToast(getActivity(), "Archivo subido con éxito.");
+
+                // AUDITORÍA: Llamar a la función de Netlify para notificar la subida.
+                sendAuditNotification(finalUploaderName, finalFileName, "Media");
+
+                // Upload was successful, go back to the previous fragment (Calendar)
                 if (getParentFragmentManager() != null) {
                     getParentFragmentManager().popBackStack();
                 }
@@ -105,8 +132,8 @@ public class UploadMediaFragment extends Fragment {
 
             @Override
             public void onFailure(String message) {
-                Toast.makeText(getContext(), "Error al subir: " + message, Toast.LENGTH_LONG).show();
-                resetUploadState(); // Permitir reintentar
+                ToastUtils.showLongToast(getActivity(), "Error al subir: " + message);
+                resetUploadState(); // Allow retry
             }
 
             @Override
@@ -117,7 +144,35 @@ public class UploadMediaFragment extends Fragment {
         });
     }
 
-    // Función de ayuda para obtener el nombre de archivo de forma robusta
+    // AUDITORÍA: Nuevo método para enviar la notificación de auditoría.
+    private void sendAuditNotification(String uploaderName, String fileName, String fileType) {
+        if (getContext() == null) {
+            Log.e("AuditError", "Context is null, cannot send audit notification.");
+            return;
+        }
+
+        String auditUrl = "https://capacitacion-mrodante.netlify.app/.netlify/functions/send-audit-notification";
+
+        JSONObject postData = new JSONObject();
+        try {
+            postData.put("userId", uploaderName);
+            postData.put("action", "Subida de " + fileType);
+            postData.put("details", "Archivo: " + fileName);
+        } catch (JSONException e) {
+            Log.e("AuditError", "Error creating audit JSON", e);
+            return;
+        }
+
+        JsonObjectRequest auditRequest = new JsonObjectRequest(Request.Method.POST, auditUrl, postData,
+                response -> Log.d("AuditSuccess", "Audit notification sent for " + fileName),
+                error -> Log.e("AuditError", "Failed to send audit notification", error)
+        );
+
+        // Añadir la petición a la cola de Volley.
+        Volley.newRequestQueue(getContext()).add(auditRequest);
+    }
+
+    // Helper function to get the file name robustly
     private String getFileNameFromUri(Uri uri) {
         String result = null;
         if (uri.getScheme() != null && uri.getScheme().equals("content")) {
@@ -155,7 +210,7 @@ public class UploadMediaFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        binding = null; // Prevenir fugas de memoria
+        binding = null; // Prevent memory leaks
     }
 }
 

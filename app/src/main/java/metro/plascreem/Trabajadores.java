@@ -37,7 +37,7 @@ public class Trabajadores extends AppCompatActivity {
         subscribeToNotifications();
         // Inicializar Firebase y DatabaseManager
         mAuth = FirebaseAuth.getInstance();
-        databaseManager = new DatabaseManager();
+        databaseManager = new DatabaseManager(this);
 
         // Inicializar vistas
         tvWorkerName = findViewById(R.id.tv_worker_name);

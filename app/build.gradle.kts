@@ -16,6 +16,13 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // 1. Definir la clave en una variable, incluyendo las comillas que necesita el String de Java.
+        val fcmServerKey =
+            "\"BCIGKBSueN26-106y122fTCtA85RQQ7_-Jmy1LsLhXiBPeAtS-tpu4gMq-tkAv67594iUeQN0rNEhpxtDR6mRUE\""
+        // 2. Usar la variable en el buildConfigField. Esto evita errores de anidamiento de comillas.
+        buildConfigField("String", "FCM_SERVER_KEY", fcmServerKey)
+
     }
 
     buildTypes {
@@ -35,6 +42,7 @@ android {
     buildFeatures {
         compose = true
         viewBinding = true
+        buildConfig = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.1" // Usa la versión más reciente

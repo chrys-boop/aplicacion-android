@@ -38,7 +38,7 @@ public class AdminTrackingFragment extends Fragment implements HistoricoAdapter.
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         binding = FragmentAdminTrackingBinding.inflate(inflater, container, false);
-        databaseManager = new DatabaseManager();
+        databaseManager = new DatabaseManager(getContext());
         storageManager = new StorageManager(); // Inicializar StorageManager
         return binding.getRoot();
     }

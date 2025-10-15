@@ -1,0 +1,9 @@
+[build]
+functions = "netlify/functions"
+
+[functions]
+node_bundler = "esbuild"
+
+# Tell the bundler to not include firebase-admin in the bundle
+[functions."*"]
+external_node_modules = ["firebase-admin"]

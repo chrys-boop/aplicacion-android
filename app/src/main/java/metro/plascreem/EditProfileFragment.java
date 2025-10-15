@@ -31,7 +31,7 @@ public class EditProfileFragment extends Fragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        databaseManager = new DatabaseManager();
+        databaseManager = new DatabaseManager(getContext());
         mAuth = FirebaseAuth.getInstance();
     }
 
