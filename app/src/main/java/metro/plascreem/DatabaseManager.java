@@ -49,7 +49,7 @@ public class DatabaseManager {
         this.requestQueue = Volley.newRequestQueue(this.context);
     }
 
-    // --- Interfaces para callbacks ---
+    // --- Interfaces para callbacks (sin cambios) ---
 
     public interface AuthListener {
         void onSuccess();
@@ -93,7 +93,7 @@ public class DatabaseManager {
     }
 
 
-    // --- Métodos de autenticación y base de datos ---
+    // --- Métodos de autenticación y base de datos (sin cambios hasta el nuevo método) ---
 
     public void registerUser(String email, String password, String fullName, String expediente, String userType, AuthListener listener) {
         mAuth.createUserWithEmailAndPassword(email, password)
@@ -107,9 +107,8 @@ public class DatabaseManager {
                         userData.put("nombreCompleto", fullName);
                         userData.put("numeroExpediente", expediente);
                         userData.put("lastConnection", System.currentTimeMillis());
-                        // --- CAMPOS NUEVOS AÑADIDOS PARA CONSISTENCIA ---
-                        userData.put("area", ""); // Campo para el área o taller del usuario, leído por AdminProfileFragment
-                        userData.put("titularSuplente", ""); // Campo para el rol específico, leído por AdminProfileFragment
+                        userData.put("area", ""); // Inicializar campo
+                        userData.put("titular", ""); // Inicializar campo
 
                         mDatabase.child("users").child(userId).setValue(userData)
                                 .addOnCompleteListener(dbTask -> {
@@ -167,7 +166,7 @@ public class DatabaseManager {
                 for (DataSnapshot fileSnapshot : snapshot.getChildren()) {
                     FileMetadata metadata = fileSnapshot.getValue(FileMetadata.class);
                     if (metadata != null) {
-                        metadata.setFileId(fileSnapshot.getKey()); // Guardar el ID del archivo
+                        metadata.setFileId(fileSnapshot.getKey());
                         fileList.add(metadata);
                     }
                 }
@@ -298,8 +297,27 @@ public class DatabaseManager {
                 });
     }
 
+    // --- NUEVO MÉTODO PARA REGISTRAR DESCARGAS CON REALTIME DATABASE ---
+    public void registrarDescargaArchivo(HistoricoArchivo historico, DataSaveListener listener) {
+        String key = mDatabase.child("file_download_history").push().getKey();
+        if (key == null) {
+            listener.onFailure("No se pudo generar una clave para el registro de descarga.");
+            return;
+        }
 
-    public void updateUserProfile(String userId, String fullName, String email, String expediente, String taller, String enlaceOrigen, String horario, DataSaveListener listener) {
+        mDatabase.child("file_download_history").child(key).setValue(historico)
+                .addOnSuccessListener(aVoid -> {
+                    Log.d(TAG, "Registro de descarga guardado con clave: " + key);
+                    listener.onSuccess();
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Error al guardar registro de descarga", e);
+                    listener.onFailure(e.getMessage());
+                });
+    }
+
+    // --- MÉTODO ACTUALIZADO --- //
+    public void updateUserProfile(String userId, String fullName, String email, String expediente, String taller, String enlaceOrigen, String horario, String area, String titular, DataSaveListener listener) {
         Map<String, Object> updatedData = new HashMap<>();
         updatedData.put("nombreCompleto", fullName);
         updatedData.put("email", email);
@@ -307,6 +325,8 @@ public class DatabaseManager {
         updatedData.put("taller", taller);
         updatedData.put("enlaceOrigen", enlaceOrigen);
         updatedData.put("horario", horario);
+        updatedData.put("area", area); // Añadido
+        updatedData.put("titular", titular); // Añadido
 
         mDatabase.child("users").child(userId).updateChildren(updatedData)
                 .addOnSuccessListener(aVoid -> listener.onSuccess())
@@ -321,6 +341,29 @@ public class DatabaseManager {
                 for (DataSnapshot eventSnapshot : snapshot.getChildren()) {
                     Evento event = eventSnapshot.getValue(Evento.class);
                     if (event != null) {
+                        event.setId(eventSnapshot.getKey());
+                        events.add(event);
+                    }
+                }
+                listener.onEventsReceived(events);
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                listener.onCancelled(error.getMessage());
+            }
+        });
+    }
+
+    public void getAllEvents(EventsListener listener) {
+        mDatabase.child("events").addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                List<Evento> events = new ArrayList<>();
+                for (DataSnapshot eventSnapshot : snapshot.getChildren()) {
+                    Evento event = eventSnapshot.getValue(Evento.class);
+                    if (event != null) {
+                        event.setId(eventSnapshot.getKey());
                         events.add(event);
                     }
                 }
@@ -338,6 +381,7 @@ public class DatabaseManager {
         String eventId = event.getId();
         if (eventId == null || eventId.isEmpty()) {
             eventId = mDatabase.child("events").push().getKey();
+            event.setId(eventId);
         }
 
         if (eventId != null) {
@@ -347,6 +391,22 @@ public class DatabaseManager {
         } else {
             listener.onFailure("No se pudo generar un ID para el evento.");
         }
+    }
+
+    public void deleteEvent(String eventId, DataSaveListener listener) {
+        if (eventId == null || eventId.isEmpty()) {
+            listener.onFailure("ID de evento inválido.");
+            return;
+        }
+        mDatabase.child("events").child(eventId).removeValue()
+                .addOnSuccessListener(aVoid -> {
+                    Log.d(TAG, "Evento eliminado con éxito: " + eventId);
+                    listener.onSuccess();
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Error al eliminar el evento: " + eventId, e);
+                    listener.onFailure(e.getMessage());
+                });
     }
 
     public void deleteFileRecord(String fileId, final DatabaseListener listener) {

@@ -1,11 +1,15 @@
 package metro.plascreem;
 
 import android.app.Activity;
+import android.app.DownloadManager;
+import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.provider.OpenableColumns;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -33,9 +37,11 @@ import com.google.firebase.storage.StorageReference;
 import java.util.ArrayList;
 import java.util.List;
 
+// Se implementa directamente la interfaz actualizada
 public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileActionListener {
 
-    private static final String DATABASE_PATH = "manuales_pdf";
+    private static final String TAG = "AdminFilesFragment";
+    private static final String DATABASE_PATH = "files"; // Se recomienda un nombre más genérico
 
     private Button btnSelectFile, btnUploadFile;
     private TextView tvFileNameStatus;
@@ -67,7 +73,8 @@ public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileAc
         View view = inflater.inflate(R.layout.fragment_admin_files, container, false);
 
         storageReference = FirebaseStorage.getInstance().getReference(DATABASE_PATH);
-        databaseReference = FirebaseDatabase.getInstance().getReference(DATABASE_PATH);
+        // Usar la URL correcta de la base de datos
+        databaseReference = FirebaseDatabase.getInstance("https://capacitacion-material-default-rtdb.firebaseio.com/").getReference(DATABASE_PATH);
 
         btnSelectFile = view.findViewById(R.id.btn_select_file);
         btnUploadFile = view.findViewById(R.id.btn_upload_file);
@@ -77,7 +84,8 @@ public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileAc
         recyclerViewFiles = view.findViewById(R.id.recycler_view_files);
 
         recyclerViewFiles.setLayoutManager(new LinearLayoutManager(getContext()));
-        fileAdapter = new FileAdapter(fileList, this);
+        // 'this' es el listener porque la clase implementa la interfaz
+        fileAdapter = new FileAdapter(fileList, this, true); // true -> mostrar botón de borrado
         recyclerViewFiles.setAdapter(fileAdapter);
 
         btnSelectFile.setOnClickListener(v -> openFilePicker());
@@ -88,6 +96,7 @@ public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileAc
         return view;
     }
 
+    // ... (otros métodos como openFilePicker, uploadFile, etc. se mantienen igual)
     private void openFilePicker() {
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
         intent.setType("application/pdf");
@@ -117,8 +126,8 @@ public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileAc
                             fileId,
                             selectedFileName,
                             uri.toString(),
-                            fileRef.getPath(),
-                            null, // No hay un 'uploaderId' para manuales generales
+                            fileRef.getPath(), // Guardar el storage path
+                            null,
                             size,
                             System.currentTimeMillis()
                     );
@@ -137,6 +146,14 @@ public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileAc
                     progressBarUpload.setProgress((int) progress);
                 });
     }
+    private void resetUploadUI() {
+        selectedFileUri = null;
+        selectedFileName = null;
+        progressBarUpload.setVisibility(View.GONE);
+        progressBarUpload.setProgress(0);
+        btnUploadFile.setEnabled(false);
+        tvFileNameStatus.setText("Ningún archivo seleccionado");
+    }
 
     private void loadFilesFromDatabase() {
         progressBarList.setVisibility(View.VISIBLE);
@@ -147,7 +164,7 @@ public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileAc
                 for (DataSnapshot postSnapshot : snapshot.getChildren()) {
                     FileMetadata metadata = postSnapshot.getValue(FileMetadata.class);
                     if (metadata != null) {
-                        metadata.setFileId(postSnapshot.getKey()); // Aseguramos que el ID esté presente
+                        metadata.setFileId(postSnapshot.getKey());
                         fileList.add(metadata);
                     }
                 }
@@ -163,40 +180,65 @@ public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileAc
         });
     }
 
+    // --- Implementación de los métodos de la interfaz ---
+
     @Override
     public void onViewFile(FileMetadata file) {
-        if (file.getDownloadUrl() == null) {
-            Toast.makeText(getContext(), "URL no disponible.", Toast.LENGTH_SHORT).show();
+        if (file.getDownloadUrl() == null || file.getDownloadUrl().isEmpty()) {
+            Toast.makeText(getContext(), R.string.error_file_url_missing, Toast.LENGTH_SHORT).show();
             return;
         }
         Intent intent = new Intent(Intent.ACTION_VIEW);
         intent.setDataAndType(Uri.parse(file.getDownloadUrl()), "application/pdf");
-        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NO_HISTORY);
+
         try {
             startActivity(intent);
-        } catch (Exception e) {
-            Toast.makeText(getContext(), "No se encontró una aplicación para abrir PDFs", Toast.LENGTH_SHORT).show();
+        } catch (android.content.ActivityNotFoundException e) {
+            Toast.makeText(getContext(), R.string.error_no_app_to_open_file, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    public void onDownloadFile(FileMetadata file) {
+        if (file.getDownloadUrl() == null || file.getDownloadUrl().isEmpty()) {
+            Toast.makeText(getContext(), R.string.error_file_url_missing, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        DownloadManager.Request request = new DownloadManager.Request(Uri.parse(file.getDownloadUrl()));
+        request.setTitle(file.getFileName());
+        request.setDescription("Descargando archivo...");
+        request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+        request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, file.getFileName());
+
+        DownloadManager downloadManager = (DownloadManager) getContext().getSystemService(Context.DOWNLOAD_SERVICE);
+        if (downloadManager != null) {
+            downloadManager.enqueue(request);
+            Toast.makeText(getContext(), R.string.download_started, Toast.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(getContext(), R.string.download_failed, Toast.LENGTH_SHORT).show();
         }
     }
 
     @Override
     public void onDeleteFile(FileMetadata file) {
         if (file.getFileId() == null || file.getStoragePath() == null) {
-            Toast.makeText(getContext(), "Metadatos del archivo incompletos o corruptos. No se puede eliminar.", Toast.LENGTH_LONG).show();
+            Toast.makeText(getContext(), "Metadatos del archivo incompletos. No se puede eliminar.", Toast.LENGTH_LONG).show();
             return;
         }
 
         new AlertDialog.Builder(requireContext())
                 .setTitle("Confirmar Eliminación")
-                .setMessage("¿Estás seguro de que quieres eliminar '" + file.getFileName() + "'? Esta acción no se puede deshacer.")
+                .setMessage("¿Estás seguro de que quieres eliminar '" + file.getFileName() + "'?")
                 .setPositiveButton("Eliminar", (dialog, which) -> {
-                    StorageReference fileRefToDelete = FirebaseStorage.getInstance().getReference().child(file.getStoragePath());
+
+                    StorageReference fileRefToDelete = FirebaseStorage.getInstance().getReferenceFromUrl(file.getDownloadUrl());
 
                     fileRefToDelete.delete().addOnSuccessListener(aVoid -> {
                         databaseReference.child(file.getFileId()).removeValue()
-                                .addOnSuccessListener(bVoid -> Toast.makeText(getContext(), "Archivo eliminado correctamente", Toast.LENGTH_SHORT).show())
-                                .addOnFailureListener(e -> Toast.makeText(getContext(), "Error al eliminar registro de la base de datos", Toast.LENGTH_SHORT).show());
-                    }).addOnFailureListener(e -> Toast.makeText(getContext(), "Error al eliminar archivo de Storage", Toast.LENGTH_SHORT).show());
+                                .addOnSuccessListener(bVoid -> Toast.makeText(getContext(), "Archivo eliminado.", Toast.LENGTH_SHORT).show())
+                                .addOnFailureListener(e -> Toast.makeText(getContext(), "Error al eliminar de la base de datos.", Toast.LENGTH_SHORT).show());
+                    }).addOnFailureListener(e -> Toast.makeText(getContext(), "Error al eliminar de Storage.", Toast.LENGTH_SHORT).show());
                 })
                 .setNegativeButton("Cancelar", null)
                 .show();
@@ -219,14 +261,4 @@ public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileAc
         }
         return result;
     }
-
-    private void resetUploadUI() {
-        selectedFileUri = null;
-        selectedFileName = null;
-        progressBarUpload.setVisibility(View.GONE);
-        progressBarUpload.setProgress(0);
-        btnUploadFile.setEnabled(false);
-        tvFileNameStatus.setText("Ningún archivo seleccionado");
-    }
 }
-

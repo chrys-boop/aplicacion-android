@@ -59,7 +59,7 @@
             android:id="@+id/et_taller"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Area"
+            android:hint="Taller"
             android:inputType="textCapWords"
             android:layout_marginBottom="12dp"/>
 
@@ -67,9 +67,26 @@
             android:id="@+id/et_enlace_origen"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:hint="Enlace de Origen"
+            android:inputType="textCapWords"
+            android:layout_marginBottom="12dp"/>
+
+        <EditText
+            android:id="@+id/et_area"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Area"
+            android:inputType="textCapWords"
+            android:layout_marginBottom="12dp"/>
+
+        <EditText
+            android:id="@+id/et_titular"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
             android:hint="Titular o suplente"
             android:inputType="textCapWords"
             android:layout_marginBottom="12dp"/>
+
 
         <EditText
             android:id="@+id/et_horario"

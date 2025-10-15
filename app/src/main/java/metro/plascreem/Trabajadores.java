@@ -1,67 +1,60 @@
 package metro.plascreem;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.view.View;
-import android.widget.Button;
-import android.widget.TextView;
-import android.widget.Toast;
 import android.util.Log;
+import android.widget.Toast;
+
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.messaging.FirebaseMessaging;
 
 import java.util.Map;
 
+// Importar la clase de View Binding generada
+import metro.plascreem.databinding.ActivityTrabajadoresBinding;
 
 public class Trabajadores extends AppCompatActivity {
 
     private static final String TAG = "Trabajadores";
 
-    private TextView tvWorkerName, tvWorkerDetails;
-    private Button btnLogout, btnEditProfile;
+    // Declarar el objeto de View Binding
+    private ActivityTrabajadoresBinding binding;
+
     private DatabaseManager databaseManager;
     private FirebaseAuth mAuth;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_trabajadores);
 
-        // Suscribir al usuario al topic \"all\" para recibir notificaciones
+        // Inflar el layout usando View Binding
+        binding = ActivityTrabajadoresBinding.inflate(getLayoutInflater());
+        // Establecer la vista raíz del binding como el contenido de la actividad
+        setContentView(binding.getRoot());
+
         subscribeToNotifications();
-        // Inicializar Firebase y DatabaseManager
+
+        // --- INICIALIZACIÓN ---
         mAuth = FirebaseAuth.getInstance();
-        databaseManager = new DatabaseManager(this);
-
-        // Inicializar vistas
-        tvWorkerName = findViewById(R.id.tv_worker_name);
-        tvWorkerDetails = findViewById(R.id.tv_worker_expediente); // Reutilizamos este TextView para más detalles
-        btnLogout = findViewById(R.id.btn_logout);
-        btnEditProfile = findViewById(R.id.btn_edit_profile);
-
-        // Cargar datos del trabajador
-        loadWorkerData();
+        databaseManager = new DatabaseManager(getApplicationContext());
 
         // Cargar el fragmento de los manuales por defecto
         if (savedInstanceState == null) {
             getSupportFragmentManager().beginTransaction()
-                    .replace(R.id.manuals_fragment_container, new WorkerManualsFragment())
+                    .replace(binding.manualsFragmentContainer.getId(), new WorkerManualsFragment())
                     .commit();
         }
 
-        // Configurar botón de editar perfil
-        btnEditProfile.setOnClickListener(v -> {
+        // --- CORRECCIÓN: CONFIGURACIÓN DE LISTENERS USANDO BINDING DIRECTAMENTE ---
+        binding.btnEditProfile.setOnClickListener(v -> {
             navigateToEditProfile();
         });
 
-        // Configurar botón de salir
-        btnLogout.setOnClickListener(v -> {
+        binding.btnLogout.setOnClickListener(v -> {
             mAuth.signOut();
             Toast.makeText(this, "Cerrando sesión...", Toast.LENGTH_SHORT).show();
             Intent intent = new Intent(this, LoginActivity.class);
@@ -74,7 +67,6 @@ public class Trabajadores extends AppCompatActivity {
     @Override
     public void onResume() {
         super.onResume();
-        // Recargar los datos cuando se vuelve a esta actividad
         loadWorkerData();
     }
 
@@ -86,16 +78,17 @@ public class Trabajadores extends AppCompatActivity {
                 @Override
                 public void onDataReceived(Map<String, Object> userData) {
                     if (userData != null) {
-                        tvWorkerName.setText(String.valueOf(userData.getOrDefault("nombreCompleto", "Nombre no disponible")));
+                        // --- CORRECCIÓN: Usar binding para acceder a los TextViews directamente ---
+                        binding.tvWorkerName.setText(String.valueOf(userData.getOrDefault("nombreCompleto", "Nombre no disponible")));
 
                         String expediente = String.valueOf(userData.getOrDefault("numeroExpediente", "N/A"));
                         String area = String.valueOf(userData.getOrDefault("area", "N/A"));
-                        String titularSuplente = String.valueOf(userData.getOrDefault("titularSuplente", "N/A"));
+                        String titular = String.valueOf(userData.getOrDefault("titular", "N/A"));
 
                         String workerDetails = "Expediente: " + expediente + "\n" +
                                 "Área: " + area + "\n" +
-                                "Rol: " + titularSuplente;
-                        tvWorkerDetails.setText(workerDetails);
+                                "Rol: " + titular;
+                        binding.tvWorkerExpediente.setText(workerDetails);
                     }
                 }
 
@@ -108,16 +101,12 @@ public class Trabajadores extends AppCompatActivity {
     }
 
     private void navigateToEditProfile() {
-        // Reemplazar todo el contenido de la Activity con el fragmento de edición
         getSupportFragmentManager().beginTransaction()
-                .replace(R.id.trabajadores_container, new EditProfileFragment()) // Usa el ID del contenedor raíz
-                .addToBackStack(null) // Permite volver a la vista anterior con el botón de retroceso
+                .replace(binding.trabajadoresContainer.getId(), new EditProfileFragment())
+                .addToBackStack(null)
                 .commit();
     }
 
-    /**
-     * Suscribe al usuario al topic \"all\" para recibir notificaciones push
-     */
     private void subscribeToNotifications() {
         FirebaseMessaging.getInstance().subscribeToTopic("all")
                 .addOnCompleteListener(task -> {

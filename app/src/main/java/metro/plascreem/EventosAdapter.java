@@ -14,9 +14,10 @@ public class EventosAdapter extends RecyclerView.Adapter<EventosAdapter.EventoVi
     private final List<Evento> eventosList;
     private final EventoActionListener listener; // Interfaz para notificar el click
 
-    // Interfaz de comunicación: EL FRAGMENTO DEBE IMPLEMENTAR ESTO
+    // --- MODIFICACIÓN --- Interfaz de comunicación actualizada
     public interface EventoActionListener {
         void onActionClick(Evento evento);
+        void onEventoClicked(Evento evento); // <-- NUEVO MÉTODO
     }
 
     public EventosAdapter(List<Evento> eventosList, EventoActionListener listener) {
@@ -27,7 +28,7 @@ public class EventosAdapter extends RecyclerView.Adapter<EventosAdapter.EventoVi
     public void setEventos(List<Evento> newEvents) {
         eventosList.clear();
         eventosList.addAll(newEvents);
-        notifyDataSetChanged(); // Notificar a la lista que hay datos nuevos
+        notifyDataSetChanged();
     }
 
     @NonNull
@@ -64,18 +65,24 @@ public class EventosAdapter extends RecyclerView.Adapter<EventosAdapter.EventoVi
             tvTitulo.setText(evento.getTitulo());
             tvDescripcion.setText(evento.getDescripcion());
 
+            // --- MODIFICACIÓN --- Listener para el clic en todo el elemento
+            itemView.setOnClickListener(v -> {
+                if (listener != null) {
+                    listener.onEventoClicked(evento);
+                }
+            });
+
             String tipo = evento.getTipoAccion();
 
-            // Lógica clave: Mostrar el botón solo si requiere subir algo
+            // Lógica del botón de acción
             if (tipo.equals(Evento.TIPO_DOCUMENTO) || tipo.equals(Evento.TIPO_MEDIA)) {
                 btnAccion.setVisibility(View.VISIBLE);
-
                 String textoBoton = tipo.equals(Evento.TIPO_DOCUMENTO) ? "Subir Documento" : "Subir Media";
                 btnAccion.setText(textoBoton);
-
-                // Al hacer click, llama al Fragmento usando el listener
                 btnAccion.setOnClickListener(v -> {
-                    listener.onActionClick(evento);
+                    if (listener != null) {
+                        listener.onActionClick(evento);
+                    }
                 });
             } else {
                 btnAccion.setVisibility(View.GONE);

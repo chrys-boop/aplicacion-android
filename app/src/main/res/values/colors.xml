@@ -21,4 +21,9 @@
     <color name="pink_700">#FFD81B60</color>
     <color name="colorActivo">#FF5722</color>
     <color name="colorInactivo">#D3D3D3</color>
+
+    <!-- Colores para los tipos de evento -->
+    <color name="colorDocument">#1976D2</color> <!-- Azul -->
+    <color name="colorMedia">#388E3C</color>    <!-- Verde -->
+    <color name="colorSimple">#607D8B</color>     <!-- Gris -->
 </resources>

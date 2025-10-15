@@ -24,12 +24,13 @@ public class Administrador extends AppCompatActivity {
     private final Fragment filesFragment = new AdminFilesFragment();
     private final Fragment calendarFragment = new CalendarFragment();
     private final Fragment documentsFragment = new UploadDocumentsFragment();
+    // --- NUEVO FRAGMENTO AÑADIDO ---
+    private final Fragment eventListFragment = new EventListFragment();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_administrador);
-
 
         // Suscribir al usuario al topic \"all\" para recibir notificaciones
         subscribeToNotifications();
@@ -46,6 +47,8 @@ public class Administrador extends AppCompatActivity {
                 selectedFragment = filesFragment;
             } else if (itemId == R.id.nav_calendario) {
                 selectedFragment = calendarFragment;
+            } else if (itemId == R.id.nav_event_history) { // --- NUEVA CONDICIÓN AÑADIDA ---
+                selectedFragment = eventListFragment;
             } else if (itemId == R.id.nav_documentos) {
                 selectedFragment = documentsFragment;
             }

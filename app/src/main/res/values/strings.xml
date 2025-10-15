@@ -1,5 +1,7 @@
 <resources>
     <string name="app_name">Plas-Creem</string>
+
+    <!-- Strings de Login y Registro -->
     <string name="login_expediente_hint">Número de Expediente</string>
     <string name="login_password_hint">Contraseña</string>
     <string name="login_button_text">Iniciar Sesión</string>
@@ -15,12 +17,14 @@
     <string name="user_type_attendant">Asistente</string>
     <string name="user_type_technician">Técnico</string>
     <string name="user_type_administrator">Administrador</string>
+
+    <!-- Títulos de Actividades -->
     <string name="title_activity_main_user">MainUserActivity</string>
+    <string name="title_activity_main_admin">MainAdminActivity</string>
+    <string name="title_activity_main_tecnico">MainTecnicoActivity</string>
     <string name="title_home">Home</string>
     <string name="title_dashboard">Dashboard</string>
     <string name="title_notifications">Notifications</string>
-    <string name="title_activity_main_admin">MainAdminActivity</string>
-    <string name="title_activity_main_tecnico">MainTecnicoActivity</string>
 
     <!-- Strings para Home (Común) -->
     <string name="home_welcome_text">Bienvenido</string>
@@ -61,8 +65,31 @@
     <string name="file_type_icon_description">Icono que representa el tipo de archivo</string>
     <string name="view_file_button_description">Botón para ver el archivo</string>
     <string name="delete_file_button_description">Botón para borrar el archivo</string>
+    <string name="profile_icon_desc">Icono de perfil de usuario</string>
+
+    <!-- Strings para la pantalla de Trabajadores -->
+    <string name="action_edit_profile">Editar Perfil</string>
+    <string name="action_logout">Cerrar Sesión</string>
+    <string name="title_manuals_and_diagrams">Manuales y Diagramas</string>
+    <string name="details_expediente">Expediente: </string>
+    <string name="details_area">Área: </string>
+    <string name="details_rol">Rol: </string>
+    <string name="status_logging_out">Cerrando sesión...</string>
+    <string name="error_loading_data">Error al cargar los datos: </string>
+    <string name="data_not_available_short">N/A</string>
+    <string name="name_not_available">Nombre no disponible</string>
+
+    <!-- Strings para Acciones de Archivos -->
+    <string name="action_view">Visualizar</string>
+    <string name="action_download">Descargar</string>
+    <string name="action_delete">Eliminar</string>
+    <string name="download_started">Iniciando descarga...</string>
+    <string name="download_completed">Descarga completa</string>
+    <string name="download_failed">Error en la descarga</string>
+    <string name="error_no_app_to_open_file">No se encontró una aplicación para abrir este archivo.</string>
+    <string name="error_file_url_missing">No se puede procesar el archivo, falta la URL.</string>
+
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
-    <string name="profile_icon_desc" />
 
 </resources>

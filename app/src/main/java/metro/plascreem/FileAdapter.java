@@ -3,10 +3,10 @@ package metro.plascreem;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageButton;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+import com.google.android.material.button.MaterialButton;
 
 import java.util.List;
 
@@ -16,8 +16,10 @@ public class FileAdapter extends RecyclerView.Adapter<FileAdapter.FileViewHolder
     private final OnFileActionListener listener;
     private final boolean showDeleteButton;
 
+    // --- Interfaz de acciones actualizada ---
     public interface OnFileActionListener {
         void onViewFile(FileMetadata file);
+        void onDownloadFile(FileMetadata file);
         void onDeleteFile(FileMetadata file);
     }
 
@@ -27,9 +29,8 @@ public class FileAdapter extends RecyclerView.Adapter<FileAdapter.FileViewHolder
         this.showDeleteButton = showDeleteButton;
     }
 
-    // Sobrecarga de constructor para mantener compatibilidad con AdminFilesFragment
     public FileAdapter(List<FileMetadata> fileList, OnFileActionListener listener) {
-        this(fileList, listener, true); // Por defecto, mostrar el botón de eliminar
+        this(fileList, listener, true);
     }
 
     @NonNull
@@ -42,10 +43,14 @@ public class FileAdapter extends RecyclerView.Adapter<FileAdapter.FileViewHolder
     @Override
     public void onBindViewHolder(@NonNull FileViewHolder holder, int position) {
         FileMetadata file = fileList.get(position);
-        holder.fileName.setText(file.getName());
+        holder.fileName.setText(file.getFileName()); // Usar getFileName() para consistencia
+        // Aquí se podrían popular otros campos como fecha y tamaño si los tuvieras en el holder
 
+        // Asignar listeners a los nuevos botones
         holder.viewButton.setOnClickListener(v -> listener.onViewFile(file));
+        holder.downloadButton.setOnClickListener(v -> listener.onDownloadFile(file));
 
+        // Lógica para mostrar/ocultar el botón de eliminar
         if (showDeleteButton) {
             holder.deleteButton.setVisibility(View.VISIBLE);
             holder.deleteButton.setOnClickListener(v -> listener.onDeleteFile(file));
@@ -59,15 +64,19 @@ public class FileAdapter extends RecyclerView.Adapter<FileAdapter.FileViewHolder
         return fileList.size();
     }
 
+    // --- ViewHolder actualizado para usar MaterialButton ---
     static class FileViewHolder extends RecyclerView.ViewHolder {
         TextView fileName;
-        ImageButton viewButton;
-        ImageButton deleteButton;
+        // Otros TextViews como tv_upload_date, tv_file_size pueden ser añadidos aquí
+        MaterialButton viewButton;
+        MaterialButton downloadButton;
+        MaterialButton deleteButton;
 
         public FileViewHolder(@NonNull View itemView) {
             super(itemView);
             fileName = itemView.findViewById(R.id.tv_file_name);
             viewButton = itemView.findViewById(R.id.btn_view_file);
+            downloadButton = itemView.findViewById(R.id.btn_download_file);
             deleteButton = itemView.findViewById(R.id.btn_delete_file);
         }
     }

@@ -1,3 +1,4 @@
+
 package metro.plascreem;
 
 import android.content.Intent;
@@ -29,7 +30,8 @@ public class AdminProfileFragment extends Fragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        databaseManager = new DatabaseManager(getContext());
+        // --- CORRECCIÓN: Inicializar DatabaseManager con el contexto ---
+        databaseManager = new DatabaseManager(requireContext());
         mAuth = FirebaseAuth.getInstance();
     }
 
@@ -41,10 +43,16 @@ public class AdminProfileFragment extends Fragment {
     }
 
     @Override
+    public void onResume() {
+        super.onResume();
+        // Recargar los datos cada vez que el fragmento se vuelve visible
+        // Esto asegura que los datos se actualicen después de editar.
+        loadUserData();
+    }
+
+    @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-
-        loadUserData();
 
         // Navegar a la pantalla de Editar Perfil
         binding.btnEditProfile.setOnClickListener(v -> {
@@ -70,10 +78,14 @@ public class AdminProfileFragment extends Fragment {
                 @Override
                 public void onDataReceived(Map<String, Object> userData) {
                     if (userData != null && isAdded()) {
+                        // --- CORRECCIÓN: Usar las claves correctas y los TextViews correctos ---
                         binding.tvNombre.setText(String.valueOf(userData.getOrDefault("nombreCompleto", "Nombre no disponible")));
                         binding.tvExpediente.setText("Expediente: " + String.valueOf(userData.getOrDefault("numeroExpediente", "N/A")));
-                        binding.tvTaller.setText("Área: " + String.valueOf(userData.getOrDefault("area", "N/A"))); // Campo actualizado
-                        binding.tvHorario.setText("Rol: " + String.valueOf(userData.getOrDefault("titularSuplente", "N/A"))); // Campo actualizado
+
+                        // Suponiendo que tvArea y tvTitular existen en tu layout, si no, usa los que correspondan.
+                        // Si los TextView se llaman tvTaller y tvHorario, esto es lo que se debe usar:
+                        binding.tvTaller.setText("Área: " + String.valueOf(userData.getOrDefault("area", "N/A")));
+                        binding.tvHorario.setText("Rol: " + String.valueOf(userData.getOrDefault("titular", "N/A")));
                     }
                 }
 

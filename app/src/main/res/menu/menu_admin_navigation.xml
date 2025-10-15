@@ -16,6 +16,12 @@
         android:icon="@android:drawable/ic_menu_agenda"
         android:title="Calendario" />
 
+    <!-- NUEVO ÍTEM AÑADIDO -->
+    <item
+        android:id="@+id/nav_event_history"
+        android:icon="@android:drawable/ic_menu_recent_history"
+        android:title="Historial de Eventos" />
+
     <item
         android:id="@+id/nav_documentos"
         android:icon="@android:drawable/ic_menu_sort_by_size"

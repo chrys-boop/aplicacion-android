@@ -1,3 +1,4 @@
+
 package metro.plascreem;
 
 import android.os.Bundle;
@@ -19,7 +20,10 @@ import java.util.Objects;
 
 public class EditProfileFragment extends Fragment {
 
+    // Campos existentes
     private EditText etNombre, etApellidoPaterno, etApellidoMaterno, etExpediente, etTaller, etEnlaceOrigen, etHorario;
+    // Nuevos campos
+    private EditText etArea, etTitular;
     private Button btnGuardar;
     private DatabaseManager databaseManager;
     private FirebaseAuth mAuth;
@@ -31,7 +35,7 @@ public class EditProfileFragment extends Fragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        databaseManager = new DatabaseManager(getContext());
+        databaseManager = new DatabaseManager(requireContext()); // Usar requireContext() para asegurar que no sea nulo
         mAuth = FirebaseAuth.getInstance();
     }
 
@@ -40,7 +44,7 @@ public class EditProfileFragment extends Fragment {
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_edit_profile, container, false);
 
-        // Inicializar vistas
+        // Inicializar vistas existentes
         etNombre = view.findViewById(R.id.et_nombre);
         etApellidoPaterno = view.findViewById(R.id.et_apellido_paterno);
         etApellidoMaterno = view.findViewById(R.id.et_apellido_materno);
@@ -50,6 +54,11 @@ public class EditProfileFragment extends Fragment {
         etHorario = view.findViewById(R.id.et_horario);
         btnGuardar = view.findViewById(R.id.btn_guardar_perfil);
 
+        // --- INICIALIZAR NUEVAS VISTAS ---
+        // Asumiendo que estos IDs existen en tu fragment_edit_profile.xml
+        etArea = view.findViewById(R.id.et_area);
+        etTitular = view.findViewById(R.id.et_titular);
+
         return view;
     }
 
@@ -57,10 +66,7 @@ public class EditProfileFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // Cargar los datos del usuario actual en los EditText
         loadCurrentUserData();
-
-        // Listener del botón Guardar
         btnGuardar.setOnClickListener(v -> saveProfileData());
     }
 
@@ -87,6 +93,10 @@ public class EditProfileFragment extends Fragment {
                         etTaller.setText(Objects.toString(userData.get("taller"), ""));
                         etEnlaceOrigen.setText(Objects.toString(userData.get("enlaceOrigen"), ""));
                         etHorario.setText(Objects.toString(userData.get("horario"), ""));
+
+                        // --- CARGAR DATOS EN NUEVOS CAMPOS ---
+                        etArea.setText(Objects.toString(userData.get("area"), ""));
+                        etTitular.setText(Objects.toString(userData.get("titular"), ""));
                     }
                 }
 
@@ -101,7 +111,7 @@ public class EditProfileFragment extends Fragment {
     }
 
     private void saveProfileData() {
-        // Obtener texto de los campos
+        // Obtener texto de los campos existentes
         String nombre = etNombre.getText().toString().trim();
         String apellidoPaterno = etApellidoPaterno.getText().toString().trim();
         String apellidoMaterno = etApellidoMaterno.getText().toString().trim();
@@ -110,28 +120,29 @@ public class EditProfileFragment extends Fragment {
         String enlaceOrigen = etEnlaceOrigen.getText().toString().trim();
         String horario = etHorario.getText().toString().trim();
 
-        // Validar que los campos no estén vacíos
+        // --- OBTENER TEXTO DE NUEVOS CAMPOS ---
+        String area = etArea.getText().toString().trim();
+        String titular = etTitular.getText().toString().trim();
+
         if (nombre.isEmpty() || apellidoPaterno.isEmpty() || expediente.isEmpty()) {
             Toast.makeText(getContext(), "Nombre, Apellido y Expediente son obligatorios.", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // Unir el nombre completo
-        String fullName = nombre + " " + apellidoPaterno + " " + apellidoMaterno;
+        String fullName = (nombre + " " + apellidoPaterno + " " + apellidoMaterno).trim();
 
         FirebaseUser currentUser = mAuth.getCurrentUser();
         if (currentUser != null) {
             String userId = currentUser.getUid();
             String email = currentUser.getEmail();
 
-            // Llamada al método correcto en DatabaseManager
-            databaseManager.updateUserProfile(userId, fullName, email, expediente, taller, enlaceOrigen, horario, new DatabaseManager.DataSaveListener() {
+            // --- LLAMAR AL MÉTODO ACTUALIZADO EN DATabasemanager ---
+            databaseManager.updateUserProfile(userId, fullName, email, expediente, taller, enlaceOrigen, horario, area, titular, new DatabaseManager.DataSaveListener() {
                 @Override
                 public void onSuccess() {
                     if (isAdded() && getActivity() != null) {
                         Toast.makeText(getContext(), "Perfil actualizado correctamente.", Toast.LENGTH_SHORT).show();
-                        // Regresar al fragmento anterior
-                        getParentFragmentManager().popBackStack();
+                        getParentFragmentManager().popBackStack(); // Regresar
                     }
                 }
 

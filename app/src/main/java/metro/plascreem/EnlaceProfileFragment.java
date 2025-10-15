@@ -1,3 +1,4 @@
+
 package metro.plascreem;
 
 import android.content.Intent;
@@ -25,14 +26,19 @@ public class EnlaceProfileFragment extends Fragment {
     private TextView tvEnlaceName, tvDatosPerfil;
     private Button btnEditarPerfil, btnCerrarSesion;
 
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        // Inicializar Firebase y DatabaseManager
+        mAuth = FirebaseAuth.getInstance();
+        // --- CORRECCIÓN: Inicializar DatabaseManager con el contexto ---
+        databaseManager = new DatabaseManager(requireContext());
+    }
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_enlace_profile, container, false);
-
-        // Inicializar Firebase y DatabaseManager
-        mAuth = FirebaseAuth.getInstance();
-        databaseManager = new DatabaseManager(getContext());
 
         // Inicializar vistas
         tvEnlaceName = view.findViewById(R.id.tv_enlace_name);
@@ -40,12 +46,8 @@ public class EnlaceProfileFragment extends Fragment {
         btnEditarPerfil = view.findViewById(R.id.btn_editar_perfil);
         btnCerrarSesion = view.findViewById(R.id.btn_cerrar_sesion);
 
-        // Cargar datos del enlace
-        loadEnlaceData();
-
         // Listener para el botón de editar perfil
         btnEditarPerfil.setOnClickListener(v -> {
-            // Reemplaza el contenedor principal de la actividad Enlaces
             getParentFragmentManager().beginTransaction()
                     .replace(R.id.fragment_container, new EditProfileFragment())
                     .addToBackStack(null)
@@ -59,7 +61,9 @@ public class EnlaceProfileFragment extends Fragment {
             Intent intent = new Intent(getActivity(), LoginActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             startActivity(intent);
-            getActivity().finish();
+            if (getActivity() != null) {
+                getActivity().finish();
+            }
         });
 
         return view;
@@ -82,13 +86,15 @@ public class EnlaceProfileFragment extends Fragment {
                     if (userData != null && isAdded()) {
                         String nombre = String.valueOf(userData.getOrDefault("nombreCompleto", "Nombre no disponible"));
                         String expediente = String.valueOf(userData.getOrDefault("numeroExpediente", "N/A"));
-                        String area = String.valueOf(userData.getOrDefault("Area", "N/A")); // Cambiado de "taller" a "area"
-                        String titularSuplente = String.valueOf(userData.getOrDefault("titularSuplente", "N/A")); // Nuevo campo
+
+                        // --- CORRECCIÓN: Usar las claves correctas ("area" y "titular") ---
+                        String area = String.valueOf(userData.getOrDefault("area", "N/A"));
+                        String titular = String.valueOf(userData.getOrDefault("titular", "N/A"));
 
                         tvEnlaceName.setText(nombre);
                         String profileDetails = "Expediente: " + expediente + "\n" +
-                                "Área: " + area + "\n" + // Etiqueta actualizada
-                                "Rol: " + titularSuplente; // Nueva línea para el rol
+                                "Área: " + area + "\n" +
+                                "Rol: " + titular;
                         tvDatosPerfil.setText(profileDetails);
                     }
                 }

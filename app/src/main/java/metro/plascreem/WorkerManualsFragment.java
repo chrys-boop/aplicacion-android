@@ -1,23 +1,25 @@
-
 package metro.plascreem;
 
+import android.app.DownloadManager;
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
-import androidx.annotation.NonNull;
-import androidx.fragment.app.Fragment;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
+import android.os.Environment;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Toast;
 
-// AUDITORÍA: Imports necesarios para la llamada a la función de Netlify
+import androidx.annotation.NonNull;
+import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
 import com.android.volley.Request;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
-
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
@@ -48,32 +50,59 @@ public class WorkerManualsFragment extends Fragment {
         recyclerView = view.findViewById(R.id.recycler_view_manuals);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         manualList = new ArrayList<>();
-
         databaseManager = new DatabaseManager(getContext());
 
+        // --- Listener con las nuevas acciones implementadas ---
         OnFileActionListener fileActionListener = new OnFileActionListener() {
             @Override
             public void onViewFile(FileMetadata file) {
-                if (file != null && file.getDownloadUrl() != null && !file.getDownloadUrl().isEmpty()) {
-                    Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(file.getDownloadUrl()));
-                    startActivity(browserIntent);
+                if (file.getDownloadUrl() == null || file.getDownloadUrl().isEmpty()) {
+                    Toast.makeText(getContext(), R.string.error_file_url_missing, Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                // Intenta abrir el archivo con una app nativa
+                Intent intent = new Intent(Intent.ACTION_VIEW);
+                intent.setDataAndType(Uri.parse(file.getDownloadUrl()), "application/pdf");
+                intent.setFlags(Intent.FLAG_ACTIVITY_NO_HISTORY);
 
-                    logDownload(file);
+                try {
+                    startActivity(intent);
+                } catch (android.content.ActivityNotFoundException e) {
+                    Toast.makeText(getContext(), R.string.error_no_app_to_open_file, Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onDownloadFile(FileMetadata file) {
+                if (file.getDownloadUrl() == null || file.getDownloadUrl().isEmpty()) {
+                    Toast.makeText(getContext(), R.string.error_file_url_missing, Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                // Lógica de descarga nativa
+                DownloadManager.Request request = new DownloadManager.Request(Uri.parse(file.getDownloadUrl()));
+                request.setTitle(file.getFileName());
+                request.setDescription("Descargando manual...");
+                request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, file.getFileName());
+
+                DownloadManager downloadManager = (DownloadManager) getContext().getSystemService(Context.DOWNLOAD_SERVICE);
+                if (downloadManager != null) {
+                    downloadManager.enqueue(request);
+                    Toast.makeText(getContext(), R.string.download_started, Toast.LENGTH_SHORT).show();
+                    logDownload(file); // Registrar la descarga
                 } else {
-                    Log.e(TAG, "La URL de descarga es nula o está vacía.");
-                    ToastUtils.showShortToast(getActivity(), "No se puede abrir el archivo.");
+                    Toast.makeText(getContext(), R.string.download_failed, Toast.LENGTH_SHORT).show();
                 }
             }
 
             @Override
             public void onDeleteFile(FileMetadata file) {
-                // Los trabajadores no pueden borrar archivos. Dejar vacío.
+                // Los trabajadores no tienen permiso para borrar archivos.
             }
         };
 
-        adapter = new FileAdapter(manualList, fileActionListener, false);
+        adapter = new FileAdapter(manualList, fileActionListener, false); // false -> no mostrar botón de borrado
         recyclerView.setAdapter(adapter);
-
         loadManuals();
 
         return view;
@@ -88,6 +117,7 @@ public class WorkerManualsFragment extends Fragment {
                 for (DataSnapshot fileSnapshot : snapshot.getChildren()) {
                     FileMetadata metadata = fileSnapshot.getValue(FileMetadata.class);
                     if (metadata != null) {
+                        metadata.setFileId(fileSnapshot.getKey());
                         manualList.add(metadata);
                     }
                 }
@@ -97,58 +127,41 @@ public class WorkerManualsFragment extends Fragment {
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
                 Log.e(TAG, "Error al cargar los manuales desde Firebase", error.toException());
-                if (getActivity() != null) {
-                    ToastUtils.showLongToast(getActivity(), "Error al cargar los manuales.");
-                }
+                Toast.makeText(getContext(), "Error al cargar los manuales.", Toast.LENGTH_LONG).show();
             }
         });
     }
 
     private void logDownload(FileMetadata file) {
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
-        if (currentUser == null) {
-            Log.w(TAG, "No se puede registrar la descarga porque el usuario no ha iniciado sesión.");
-            return;
-        }
+        if (currentUser == null || file == null || file.getFileId() == null) return;
 
         String userId = currentUser.getUid();
-        String downloaderName = currentUser.getDisplayName();
-        if (downloaderName == null || downloaderName.isEmpty()) {
-            downloaderName = currentUser.getEmail();
-            if (downloaderName == null || downloaderName.isEmpty()) {
-                downloaderName = "Usuario Desconocido";
-            }
-        }
+        String userEmail = currentUser.getEmail() != null ? currentUser.getEmail() : "Email Desconocido";
 
-        // AUDITORÍA: Envía notificación si el archivo es un PDF.
-        if (file.getFileName() != null && file.getFileName().toLowerCase().endsWith(".pdf")) {
-            sendAuditNotification(downloaderName, file.getFileName());
-        }
+        HistoricoArchivo historico = new HistoricoArchivo(file.getFileId(), file.getFileName(), userId, userEmail);
 
-        Log.d(TAG, "Registrando descarga del manual '" + file.getFileName() + "' por el usuario: " + userId);
-
-        databaseManager.logDownloadEvent(userId, downloaderName, file.getFileName(), new DatabaseManager.DataSaveListener() {
+        databaseManager.registrarDescargaArchivo(historico, new DatabaseManager.DataSaveListener() {
             @Override
             public void onSuccess() {
-                Log.d(TAG, "Registro de descarga exitoso para auditoría.");
+                Log.d(TAG, "Registro de descarga guardado exitosamente.");
             }
 
             @Override
             public void onFailure(String message) {
-                Log.e(TAG, "Fallo al registrar la descarga para auditoría: " + message);
+                Log.e(TAG, "Fallo al guardar el registro de descarga: " + message);
             }
         });
+
+        if (file.getFileName() != null && file.getFileName().toLowerCase().endsWith(".pdf")) {
+            sendAuditNotification(userEmail, file.getFileName());
+        }
     }
 
-    // AUDITORÍA: Nuevo método para enviar la notificación de auditoría de descarga.
     private void sendAuditNotification(String downloaderName, String fileName) {
-        if (getContext() == null) {
-            Log.e("AuditError", "El contexto es nulo, no se puede enviar la notificación de auditoría.");
-            return;
-        }
+        if (getContext() == null) return;
 
         String auditUrl = "https://capacitacion-mrodante.netlify.app/.netlify/functions/send-audit-notification";
-
         JSONObject postData = new JSONObject();
         try {
             postData.put("userId", downloaderName);
@@ -160,11 +173,10 @@ public class WorkerManualsFragment extends Fragment {
         }
 
         JsonObjectRequest auditRequest = new JsonObjectRequest(Request.Method.POST, auditUrl, postData,
-                response -> Log.d("AuditSuccess", "Notificación de auditoría enviada por descarga de PDF: " + fileName),
-                error -> Log.e("AuditError", "Fallo al enviar la notificación de auditoría por descarga", error)
+                response -> Log.d("AuditSuccess", "Notificación de auditoría enviada."),
+                error -> Log.e("AuditError", "Fallo al enviar notificación de auditoría.", error)
         );
 
-        // Añadir la petición a la cola de Volley.
         Volley.newRequestQueue(getContext()).add(auditRequest);
     }
 }

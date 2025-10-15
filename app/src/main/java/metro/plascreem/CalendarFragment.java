@@ -1,5 +1,6 @@
 package metro.plascreem;
 
+import android.app.AlertDialog;
 import android.os.Bundle;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -36,6 +37,7 @@ public class CalendarFragment extends Fragment
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         binding = FragmentCalendarBinding.inflate(inflater, container, false);
+        // --- CORRECCIÓN --- Se usa getContext() en un Fragment.
         databaseManager = new DatabaseManager(getContext());
         return binding.getRoot();
     }
@@ -67,6 +69,12 @@ public class CalendarFragment extends Fragment
         // Obtener el rol del usuario actual
         loadUserRole();
     }
+
+    @Override
+    public void onEventoClicked(Evento evento) {
+        showEventDetailsDialog(evento);
+    }
+
 
     private void loadUserRole() {
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
@@ -135,6 +143,60 @@ public class CalendarFragment extends Fragment
             }
         });
     }
+
+    private void showEventDetailsDialog(Evento evento) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+        builder.setTitle(evento.getTitulo());
+        builder.setMessage(evento.getDescripcion());
+
+        // Botón para ejecutar la acción principal del evento (si la tiene)
+        if (!Evento.TIPO_SIMPLE.equals(evento.getTipoAccion())) {
+            builder.setPositiveButton("Ir a Acción", (dialog, which) -> {
+                onActionClick(evento);
+            });
+        }
+
+        // Botón de cerrar
+        builder.setNegativeButton("Cerrar", (dialog, which) -> dialog.dismiss());
+
+        // --- BOTÓN DE ELIMINAR (SOLO PARA ADMIN) ---
+        if ("Administrador".equals(userRole)) {
+            builder.setNeutralButton("Eliminar", (dialog, which) -> {
+                // Pedir confirmación antes de eliminar
+                new AlertDialog.Builder(getContext())
+                        .setTitle("Confirmar Eliminación")
+                        .setMessage("¿Estás seguro de que quieres eliminar este evento?")
+                        .setPositiveButton("Sí, Eliminar", (confirmDialog, confirmWhich) -> {
+                            deleteEvent(evento);
+                        })
+                        .setNegativeButton("No", null)
+                        .show();
+            });
+        }
+
+        builder.show();
+    }
+
+    private void deleteEvent(Evento evento) {
+        databaseManager.deleteEvent(evento.getId(), new DatabaseManager.DataSaveListener() {
+            @Override
+            public void onSuccess() {
+                if(isAdded()) {
+                    Toast.makeText(getContext(), "Evento eliminado con éxito", Toast.LENGTH_SHORT).show();
+                    // Recargar los eventos para la fecha actual para que desaparezca de la lista
+                    loadEventsForDate(evento.getFecha());
+                }
+            }
+
+            @Override
+            public void onFailure(String message) {
+                if(isAdded()) {
+                    Toast.makeText(getContext(), "Error al eliminar: " + message, Toast.LENGTH_LONG).show();
+                }
+            }
+        });
+    }
+
 
     private void showEmptyState(boolean isEmpty) {
         binding.emptyState.setVisibility(isEmpty ? View.VISIBLE : View.GONE);
