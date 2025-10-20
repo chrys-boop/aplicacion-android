@@ -49,7 +49,11 @@ public class DatabaseManager {
         this.requestQueue = Volley.newRequestQueue(this.context);
     }
 
-    // --- Interfaces para callbacks (sin cambios) ---
+    // --- Interfaces para callbacks ---
+    public interface DataCallback<T> {
+        void onDataReceived(T data);
+        void onDataCancelled(String message);
+    }
 
     public interface AuthListener {
         void onSuccess();
@@ -93,7 +97,7 @@ public class DatabaseManager {
     }
 
 
-    // --- Métodos de autenticación y base de datos (sin cambios hasta el nuevo método) ---
+    // --- Métodos de autenticación y base de datos ---
 
     public void registerUser(String email, String password, String fullName, String expediente, String userType, AuthListener listener) {
         mAuth.createUserWithEmailAndPassword(email, password)
@@ -134,6 +138,28 @@ public class DatabaseManager {
                         listener.onFailure(task.getException().getMessage());
                     }
                 });
+    }
+
+    public void getUsersByRole(String role, final DataCallback<List<User>> listener) {
+        mDatabase.child("users").orderByChild("userType").equalTo(role).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                List<User> userList = new ArrayList<>();
+                for (DataSnapshot userSnapshot : snapshot.getChildren()) {
+                    User user = userSnapshot.getValue(User.class);
+                    if (user != null) {
+                        user.setUid(userSnapshot.getKey());
+                        userList.add(user);
+                    }
+                }
+                listener.onDataReceived(userList);
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                listener.onDataCancelled(error.getMessage());
+            }
+        });
     }
 
     public void getAllUsers(AllUsersListener listener) {

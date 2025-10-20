@@ -2,24 +2,33 @@ package metro.plascreem;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
-import android.util.Log;
+
 import android.os.Bundle;
+import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.widget.Toast;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
-
 import com.google.firebase.messaging.FirebaseMessaging;
 
 public class Enlaces extends AppCompatActivity {
 
     private static final String TAG = "Enlaces";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_enlaces);
+
+        // --- CONFIGURACIÓN DE LA TOOLBAR ---
+        Toolbar toolbar = findViewById(R.id.toolbar_enlaces);
+        setSupportActionBar(toolbar);
 
         // Suscribir al usuario al topic \"all\" para recibir notificaciones
         subscribeToNotifications();
@@ -31,6 +40,34 @@ public class Enlaces extends AppCompatActivity {
         if (savedInstanceState == null) {
             getSupportFragmentManager().beginTransaction().replace(R.id.fragment_container, new EnlaceProfileFragment()).commit();
         }
+    }
+
+    // --- MÉTODO PARA CREAR EL MENÚ DE OPCIONES EN LA TOOLBAR ---
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.enlace_options_menu, menu);
+        return true;
+    }
+
+    // --- MÉTODO PARA MANEJAR CLICS EN EL MENÚ DE OPCIONES ---
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        int itemId = item.getItemId();
+        if (itemId == R.id.action_change_password) {
+            // Abrir el fragmento para cambiar la contraseña
+            replaceFragment(new ChangePasswordFragment(), true);
+            return true;
+        } else if (itemId == R.id.action_update_email) {
+            // Abrir el fragmento para actualizar el correo
+            replaceFragment(new UpdateEmailFragment(), true);
+            return true;
+        } else if (itemId == R.id.action_settings) {
+            // Abrir el fragmento de configuración
+            replaceFragment(new SettingsFragment(), true);
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     private final BottomNavigationView.OnNavigationItemSelectedListener navListener = new BottomNavigationView.OnNavigationItemSelectedListener() {
@@ -78,4 +115,3 @@ public class Enlaces extends AppCompatActivity {
                 });
     }
 }
-

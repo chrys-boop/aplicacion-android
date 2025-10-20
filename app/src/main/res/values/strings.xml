@@ -1,7 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Plas-Creem</string>
-
-    <!-- Strings de Login y Registro -->
     <string name="login_expediente_hint">Número de Expediente</string>
     <string name="login_password_hint">Contraseña</string>
     <string name="login_button_text">Iniciar Sesión</string>
@@ -17,14 +16,12 @@
     <string name="user_type_attendant">Asistente</string>
     <string name="user_type_technician">Técnico</string>
     <string name="user_type_administrator">Administrador</string>
-
-    <!-- Títulos de Actividades -->
     <string name="title_activity_main_user">MainUserActivity</string>
-    <string name="title_activity_main_admin">MainAdminActivity</string>
-    <string name="title_activity_main_tecnico">MainTecnicoActivity</string>
     <string name="title_home">Home</string>
     <string name="title_dashboard">Dashboard</string>
     <string name="title_notifications">Notifications</string>
+    <string name="title_activity_main_admin">MainAdminActivity</string>
+    <string name="title_activity_main_tecnico">MainTecnicoActivity</string>
 
     <!-- Strings para Home (Común) -->
     <string name="home_welcome_text">Bienvenido</string>
@@ -67,9 +64,12 @@
     <string name="delete_file_button_description">Botón para borrar el archivo</string>
     <string name="profile_icon_desc">Icono de perfil de usuario</string>
 
-    <!-- Strings para la pantalla de Trabajadores -->
+    <!-- Strings para la pantalla de Trabajadores y Acciones de Archivos -->
     <string name="action_edit_profile">Editar Perfil</string>
     <string name="action_logout">Cerrar Sesión</string>
+    <string name="action_view">Ver</string>
+    <string name="action_download">Descargar</string>
+    <string name="action_delete">Eliminar</string>
     <string name="title_manuals_and_diagrams">Manuales y Diagramas</string>
     <string name="details_expediente">Expediente: </string>
     <string name="details_area">Área: </string>
@@ -79,17 +79,31 @@
     <string name="data_not_available_short">N/A</string>
     <string name="name_not_available">Nombre no disponible</string>
 
-    <!-- Strings para Acciones de Archivos -->
-    <string name="action_view">Visualizar</string>
-    <string name="action_download">Descargar</string>
-    <string name="action_delete">Eliminar</string>
+    <!-- Strings para Descargas y Archivos -->
+    <string name="error_file_url_missing">URL del archivo no encontrada.</string>
+    <string name="error_no_app_to_open_file">No se encontró una aplicación para abrir este tipo de archivo.</string>
     <string name="download_started">Iniciando descarga...</string>
-    <string name="download_completed">Descarga completa</string>
-    <string name="download_failed">Error en la descarga</string>
-    <string name="error_no_app_to_open_file">No se encontró una aplicación para abrir este archivo.</string>
-    <string name="error_file_url_missing">No se puede procesar el archivo, falta la URL.</string>
+    <string name="download_failed">Error durante la descarga.</string>
+
 
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="lock_icon">lock</string>
+    <string name="update_email_icon">update_email_icon</string>
+    <string name="email_icon">email_icon</string>
+
+    <!-- strings.xml -->
+    <string name="privacy_policy_text">
+No omito hacer de su conocimiento que el presente
+escrito contiene Datos Personales de servidores públicos.
+Por lo tanto, deberán adoptar las medidas necesarias que
+garanticen la seguridad y resguardo de los datos personales
+transmitidos, evitando su alteración, pérdida, transmisión y acceso no autorizado.
+
+En consecuencia, el mal uso de los mismos será responsabilidad de la autoridad destinataria y conocedora del presente escrito.
+
+Lo anterior se fundamenta en los artículos 6, apartado A, fracción II de la Constitución Política de los Estados Unidos Mexicanos; 3, fracción IX; 6, 9, 10, 55, 56, 57, 59, 60, 61, 63 y 127, fracciones VI y VII, de la Ley de Protección de Datos Personales en Posesión de Sujetos Obligados de la Ciudad de México; y 6, fracción XXII y 186 de la Ley de Transparencia y Acceso a la Información Pública y Rendición de Cuentas de la Ciudad de México.
+</string>
+
 
 </resources>

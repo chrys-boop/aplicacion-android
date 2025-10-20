@@ -1,9 +1,10 @@
+
 package metro.plascreem;
 
 // Importante para que Firebase pueda ignorar campos nulos al guardar
 import com.google.firebase.database.IgnoreExtraProperties;
 
-
+@IgnoreExtraProperties
 public class User {
     private String uid;
     private String nombreCompleto;
@@ -11,7 +12,9 @@ public class User {
     private String email;
     private String userType;
     private long lastConnection;
+    private String fcmToken; // <-- AÑADIDO
 
+    // --- NUEVOS CAMPOS ---
     private String area;
     private String titular;
 
@@ -24,7 +27,8 @@ public class User {
     // Constructor vacío requerido para Firebase
     public User() {}
 
-    // Getters y Setters
+    // --- GETTERS Y SETTERS --- //
+
     public String getUid() {
         return uid;
     }
@@ -71,6 +75,15 @@ public class User {
 
     public void setLastConnection(long lastConnection) {
         this.lastConnection = lastConnection;
+    }
+
+    // --- GETTER Y SETTER PARA FCM TOKEN ---
+    public String getFcmToken() { // <-- AÑADIDO
+        return fcmToken;
+    }
+
+    public void setFcmToken(String fcmToken) { // <-- AÑADIDO
+        this.fcmToken = fcmToken;
     }
 
     // --- GETTERS Y SETTERS PARA NUEVOS CAMPOS ---

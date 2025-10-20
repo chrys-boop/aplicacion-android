@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:background="@color/background">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp"
+        android:gravity="center_horizontal">
+
+        <!-- Ícono de encabezado -->
+        <ImageView
+            android:layout_width="90dp"
+            android:layout_height="90dp"
+            android:layout_marginBottom="16dp"
+            android:src="@drawable/ic_email_modern"
+            android:contentDescription="@string/email_icon"
+            />
+
+        <!-- Título -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Actualizar Correo Electrónico"
+            android:textAppearance="@style/TextAppearance.AppCompat.Large"
+            android:textStyle="bold"
+            android:textColor="?attr/colorPrimary"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Subtítulo -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Introduce tu nuevo correo y confirma con tu contraseña actual"
+            android:textAppearance="@style/TextAppearance.AppCompat.Body1"
+            android:textColor="?attr/colorPrimaryDark"
+            android:gravity="center"
+            android:layout_marginBottom="24dp" />
+
+        <!-- Campo de nuevo correo SIN ícono -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Nuevo correo electrónico"
+            app:boxBackgroundMode="outline"
+            app:boxStrokeColor="?attr/colorPrimary"
+            android:layout_marginBottom="16dp"
+            app:endIconMode="none"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/et_new_email"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textEmailAddress"
+                android:background="@android:color/transparent"
+
+                android:drawableStart="@drawable/ic_email_modern"
+                android:drawablePadding="16dp"
+                android:paddingStart="8dp"
+                android:paddingLeft="8dp"/>  <!-- Icono dentro del EditText -->
+
+    </com.google.android.material.textfield.TextInputLayout>
+
+
+        <!-- Campo de contraseña SIN ícono ni toggle -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Contraseña actual"
+            app:boxBackgroundMode="outline"
+            app:boxStrokeColor="?attr/colorPrimary"
+
+            app:startIconTint="@null"
+            android:layout_marginBottom="16dp"
+            app:endIconMode="none">
+
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/et_current_password_for_email"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textPassword"
+                android:background="@android:color/transparent"
+                android:drawableStart="@drawable/ic_lock_secure"
+                android:drawablePadding="16dp"
+                android:paddingStart="8dp"
+                android:paddingLeft="8dp"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+
+
+        <!-- Botón de guardar -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_save_password"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Guardar cambios"
+            android:textAllCaps="false"
+            android:textColor="@android:color/white"
+            android:backgroundTint="?attr/colorPrimary"
+            android:layout_marginTop="16dp"
+            android:paddingVertical="12dp"
+            app:cornerRadius="12dp"
+            app:icon="@drawable/ic_lock_secure"
+            app:iconGravity="textStart"
+            app:iconPadding="12dp"
+            app:iconTint="@android:color/white"
+            android:elevation="4dp" />
+
+    </LinearLayout>
+</ScrollView>
+

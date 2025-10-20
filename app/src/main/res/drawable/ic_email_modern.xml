@@ -1,0 +1,31 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Fondo del sobre -->
+    <path
+        android:fillColor="#1976D2"
+        android:pathData="M4,4h16c1.1,0 2,0.9 2,2v12c0,1.1 -0.9,2 -2,2H4c-1.1,0 -2,-0.9 -2,-2V6c0,-1.1 0.9,-2 2,-2z" />
+
+    <!-- Tapa del sobre -->
+    <path
+        android:fillColor="#2196F3"
+        android:pathData="M2,6l10,7 10,-7z" />
+
+    <!-- Borde superior (efecto de brillo) -->
+    <path
+        android:fillColor="#42A5F5"
+        android:pathData="M2,6l10,6 10,-6"
+        android:fillAlpha="0.4" />
+
+    <!-- Línea del cierre -->
+    <path
+        android:strokeColor="#E3F2FD"
+        android:strokeWidth="1.4"
+        android:pathData="M4,7l8,5 8,-5"
+        android:strokeLineJoin="round"
+        android:strokeLineCap="round" />
+
+</vector>

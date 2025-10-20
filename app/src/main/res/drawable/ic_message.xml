@@ -1,0 +1,36 @@
+<!-- drawable/ic_message_modern.xml -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Cuerpo del sobre -->
+    <path
+        android:pathData="M22,6c0-1.1 -0.9,-2 -2,-2H4C2.9,4 2,4.9 2,6v12c0,1.1 0.9,2 2,2h16c1.1,0 2,-0.9 2,-2V6zM20,6l-8,5 -8,-5H20zM20,18H4V8l8,5 8,-5V18z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="2"
+                android:startY="4"
+                android:endX="22"
+                android:endY="20">
+                <item android:offset="0" android:color="?attr/colorPrimary"/>
+                <item android:offset="0.5" android:color="?attr/colorPrimaryContainer"/>
+                <item android:offset="1" android:color="?attr/colorTertiary"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Sombra sutil (para dar profundidad) -->
+    <path
+        android:fillColor="#20000000"
+        android:pathData="M2,18h20v0.8c0,0.6 -0.4,1.2 -1,1.5H3c-0.6,-0.3 -1,-0.9 -1,-1.5V18z"/>
+
+    <!-- Indicador de notificación -->
+    <path
+        android:fillColor="#FF3D00"
+        android:pathData="M18,4a2.5,2.5 0 1,1 -0.01,0"/>
+
+</vector>

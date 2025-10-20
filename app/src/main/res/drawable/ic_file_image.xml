@@ -2,9 +2,34 @@
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
-    android:viewportHeight="24"
-    android:tint="?attr/colorControlNormal">
+    android:viewportHeight="24">
+
+    <!-- Marco sólido -->
     <path
-        android:fillColor="@android:color/white"
-        android:pathData="M21.99,4c0,-1.1 -0.89,-2 -1.99,-2H4c-1.1,0 -2,0.9 -2,2v16c0,1.1 0.9,2 2,2h16c1.1,0 2,-0.9 2,-2L22,4zM14,14l-3,-4 -4,5h12l-5,-6.67z"/>
+        android:fillColor="#1976D2"
+        android:pathData="M3,5c0,-1.1 0.9,-2 2,-2h14c1.1,0 2,0.9 2,2v14c0,1.1 -0.9,2 -2,2H5c-1.1,0 -2,-0.9 -2,-2V5z" />
+
+    <!-- Imagen / paisaje (fondo claro dentro del marco) -->
+    <path
+        android:fillColor="#E3F2FD"
+        android:pathData="M5,7h14v10H5z" />
+
+    <!-- Montañas y sol -->
+    <path
+        android:fillColor="#1976D2"
+        android:pathData="M8,14l2.5,-3 3,3.5L16,12l3,5H8z" />
+    <path
+        android:fillColor="#1976D2"
+        android:pathData="M7.5,9a1,1 0,1 1,2 0a1,1 0,1 1,-2 0" />
+
+    <!-- Botón de video (play) -->
+    <path
+        android:fillColor="#1565C0"
+        android:pathData="M17.5,9.5l3,1.8 -3,1.8z" />
+
+    <!-- Nota musical -->
+    <path
+        android:fillColor="#0D47A1"
+        android:pathData="M5,17v-2.5c0,-0.28 0.22,-0.5 0.5,-0.5h1c0.28,0 0.5,0.22 0.5,0.5v2l2,-0.5v1.5l-2,0.5c-1.1,0.3 -2,-0.4 -2,-1z" />
+
 </vector>

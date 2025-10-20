@@ -26,4 +26,6 @@
     <color name="colorDocument">#1976D2</color> <!-- Azul -->
     <color name="colorMedia">#388E3C</color>    <!-- Verde -->
     <color name="colorSimple">#607D8B</color>     <!-- Gris -->
+    <color name="background">#FFFFFF</color> <!-- fondo blanco -->
+
 </resources>

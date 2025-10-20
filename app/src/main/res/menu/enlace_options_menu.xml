@@ -1,0 +1,19 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/action_change_password"
+        android:title="Modificar contraseña"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_update_email"
+        android:title="Actualizar correo electrónico"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_settings"
+        android:title="Configuración"
+        app:showAsAction="never" />
+
+</menu>
