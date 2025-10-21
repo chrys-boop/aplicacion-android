@@ -1,4 +1,5 @@
 package metro.plascreem;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -8,10 +9,12 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.util.Log;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
@@ -26,7 +29,7 @@ public class LoginActivity extends AppCompatActivity {
     private static final String TAG ="LoginActivity";
     private EditText etEmail, etPassword;
     private Button btnLogin;
-    private TextView tvGoToRegister;
+    private TextView tvGoToRegister, tvForgotPassword;
     private DatabaseManager databaseManager;
     private FirebaseAuth mAuth;
 
@@ -42,6 +45,7 @@ public class LoginActivity extends AppCompatActivity {
         etPassword = findViewById(R.id.et_password);
         btnLogin = findViewById(R.id.btn_login);
         tvGoToRegister = findViewById(R.id.tv_go_to_register);
+        tvForgotPassword = findViewById(R.id.tv_forgot_password);
 
         btnLogin.setOnClickListener(v -> {
             String email = etEmail.getText().toString().trim();
@@ -58,7 +62,6 @@ public class LoginActivity extends AppCompatActivity {
                     ToastUtils.showShortToast(LoginActivity.this, "Inicio de sesión exitoso.");
                     FirebaseUser user = mAuth.getCurrentUser();
                     if (user != null) {
-                        // Después del login exitoso, actualizar el token de FCM
                         updateFcmTokenAndRedirect(user.getUid());
                     } else {
                         ToastUtils.showLongToast(LoginActivity.this, "Error: no se pudo obtener el usuario después del inicio de sesión.");
@@ -76,6 +79,27 @@ public class LoginActivity extends AppCompatActivity {
             Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
             startActivity(intent);
         });
+
+        tvForgotPassword.setOnClickListener(v -> sendPasswordReset());
+    }
+
+    private void sendPasswordReset() {
+        String email = etEmail.getText().toString().trim();
+        if (TextUtils.isEmpty(email)) {
+            ToastUtils.showShortToast(this, "Por favor, ingrese su correo electrónico para restablecer la contraseña.");
+            return;
+        }
+
+        mAuth.sendPasswordResetEmail(email)
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        ToastUtils.showLongToast(this, "Se ha enviado un correo para restablecer su contraseña.");
+                        Log.d(TAG, "Email de restablecimiento enviado a: " + email);
+                    } else {
+                        ToastUtils.showLongToast(this, "Error al enviar el correo de restablecimiento.");
+                        Log.e(TAG, "Error en sendPasswordResetEmail", task.getException());
+                    }
+                });
     }
 
     @Override
@@ -84,7 +108,6 @@ public class LoginActivity extends AppCompatActivity {
         FirebaseUser currentUser = mAuth.getCurrentUser();
         if (currentUser != null) {
             ToastUtils.showShortToast(this, "Sesión ya iniciada. Redirigiendo...");
-            // También actualizar token si ya hay sesión activa
             updateFcmTokenAndRedirect(currentUser.getUid());
         }
     }
@@ -97,20 +120,17 @@ public class LoginActivity extends AppCompatActivity {
                     @Override
                     public void onSuccess() {
                         Log.d(TAG, "Token de FCM actualizado exitosamente para el usuario: " + userId);
-                        // Token actualizado, ahora podemos redirigir
                         fetchUserDataAndRedirect(userId);
                     }
 
                     @Override
                     public void onFailure(String message) {
                         Log.e(TAG, "Error al actualizar el token de FCM: " + message);
-                        // Incluso si falla, redirigimos para no bloquear al usuario
                         fetchUserDataAndRedirect(userId);
                     }
                 });
             } else {
                 Log.e(TAG, "No se pudo obtener el token de FCM.", task.getException());
-                // No se pudo obtener token, pero el usuario debe continuar
                 fetchUserDataAndRedirect(userId);
             }
         });
@@ -125,30 +145,36 @@ public class LoginActivity extends AppCompatActivity {
                     return;
                 }
 
+                subscribeToNotifications();
+
                 String userType = ((String) userData.get("userType")).trim();
                 String nombre = (String) userData.get("nombreCompleto");
                 String expediente = (String) userData.get("numeroExpediente");
 
                 Intent intent;
+
                 switch (userType) {
                     case "Administrador":
                         intent = new Intent(LoginActivity.this, Administrador.class);
-                        break;
-                    case "Enlaces":
-                        intent = new Intent(LoginActivity.this, Enlaces.class);
+                        FirebaseMessaging.getInstance().subscribeToTopic("admins").addOnCompleteListener(task -> Log.d(TAG, "Subscribed to 'admins' topic."));
                         break;
                     case "Personal Administrativo":
                         intent = new Intent(LoginActivity.this, Personal_Administrativo.class);
+                        FirebaseMessaging.getInstance().subscribeToTopic("admins").addOnCompleteListener(task -> Log.d(TAG, "Subscribed to 'admins' topic."));
+                        break;
+                    case "Enlaces":
+                        intent = new Intent(LoginActivity.this, Enlaces.class);
+                        FirebaseMessaging.getInstance().unsubscribeFromTopic("admins").addOnCompleteListener(task -> Log.d(TAG, "Unsubscribed from 'admins' topic."));
                         break;
                     case "Trabajadores":
                         intent = new Intent(LoginActivity.this, Trabajadores.class);
+                        FirebaseMessaging.getInstance().unsubscribeFromTopic("admins").addOnCompleteListener(task -> Log.d(TAG, "Unsubscribed from 'admins' topic."));
                         break;
                     default:
-                        ToastUtils.showLongToast(LoginActivity.this, "Rol de usuario no reconocido: [" + userType + "]");
+                        Toast.makeText(LoginActivity.this, "Rol de usuario no reconocido: [" + userType + "]", Toast.LENGTH_LONG).show();
                         return;
                 }
 
-                // Adjuntar datos de usuario comunes para todas las actividades de perfil
                 if (nombre != null) {
                     intent.putExtra("NOMBRE_COMPLETO", nombre);
                 }
@@ -158,7 +184,7 @@ public class LoginActivity extends AppCompatActivity {
 
                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                 startActivity(intent);
-                finish(); // Cierra LoginActivity
+                finish();
             }
 
             @Override
@@ -168,14 +194,9 @@ public class LoginActivity extends AppCompatActivity {
         });
     }
 
-    /**
-     * 🔔 Suscribe al usuario al topic \"all\" para recibir notificaciones push
-     * cuando se creen nuevos eventos desde cualquier administrador
-     */
     private void subscribeToNotifications() {
         Log.d(TAG, "🔔 Iniciando suscripción a notificaciones...");
 
-        // Solicitar permiso de notificaciones en Android 13+ (API 33+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
                     != PackageManager.PERMISSION_GRANTED) {
@@ -187,7 +208,6 @@ public class LoginActivity extends AppCompatActivity {
             }
         }
 
-        // Obtener el token de FCM para debugging
         FirebaseMessaging.getInstance().getToken()
                 .addOnCompleteListener(tokenTask -> {
                     if (tokenTask.isSuccessful() && tokenTask.getResult() != null) {
@@ -198,12 +218,10 @@ public class LoginActivity extends AppCompatActivity {
                     }
                 });
 
-        // Suscribir al topic \"all\"
         FirebaseMessaging.getInstance().subscribeToTopic("all")
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
                         Log.d(TAG, "✅✅✅ Usuario suscrito EXITOSAMENTE al topic 'all' ✅✅✅");
-                        // No mostramos Toast aquí para no saturar
                     } else {
                         Log.e(TAG, "❌❌❌ ERROR al suscribir al topic 'all' ❌❌❌");
                         if (task.getException() != null) {
@@ -216,7 +234,7 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == 1) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {

@@ -68,6 +68,15 @@
             android:textColor="@color/black"/>
 
         <TextView
+            android:id="@+id/tv_forgot_password"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="¿Olvidaste tu contraseña?"
+            android:textColor="@color/purple_500"
+            android:textStyle="normal" />
+
+        <TextView
             android:id="@+id/tv_go_to_register"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

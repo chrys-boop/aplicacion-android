@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -28,5 +29,18 @@ public class PrivacyPolicyFragment extends Fragment {
 
         // Carga el texto desde los recursos de strings (strings.xml)
         policyContent.setText(R.string.privacy_policy_text);
+
+        // --- MI CÓDIGO AÑADIDO ---
+        // 1. Encontrar el botón por su ID
+        Button acceptButton = view.findViewById(R.id.btn_accept_policy);
+
+        // 2. Asignar un listener para el evento de clic
+        acceptButton.setOnClickListener(v -> {
+            // 3. Si el fragmento está adjunto a una actividad, ciérralo.
+            if (getActivity() != null) {
+                // Esta línea simula el botón de "atrás", cerrando el fragmento actual.
+                getActivity().getSupportFragmentManager().popBackStack();
+            }
+        });
     }
 }

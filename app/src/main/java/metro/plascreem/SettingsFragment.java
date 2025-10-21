@@ -88,29 +88,33 @@ public class SettingsFragment extends Fragment {
 
     private void setupReminderSwitch(View view) {
         SwitchMaterial switchReminders = view.findViewById(R.id.switch_event_reminders);
+        // Por defecto, los recordatorios están activados
         boolean remindersEnabled = settingsPrefs.getBoolean(REMINDERS_KEY, true);
         switchReminders.setChecked(remindersEnabled);
 
         switchReminders.setOnCheckedChangeListener((buttonView, isChecked) -> {
             settingsPrefs.edit().putBoolean(REMINDERS_KEY, isChecked).apply();
+            String notificationTopic = "all"; // Corregido para coincidir con la función de Netlify
 
             if (isChecked) {
-                FirebaseMessaging.getInstance().subscribeToTopic("event_reminders")
+                // Suscribirse al tema 'all' para recibir notificaciones generales
+                FirebaseMessaging.getInstance().subscribeToTopic(notificationTopic)
                         .addOnCompleteListener(task -> {
                             String msg = "Recordatorios activados";
                             if (!task.isSuccessful()) {
                                 msg = "Error al activar recordatorios";
-                                Log.w(TAG, "Suscripción al topic fallida", task.getException());
+                                Log.w(TAG, "Suscripción al topic 'all' fallida", task.getException());
                             }
                             showToast(msg);
                         });
             } else {
-                FirebaseMessaging.getInstance().unsubscribeFromTopic("event_reminders")
+                // Cancelar suscripción al tema 'all'
+                FirebaseMessaging.getInstance().unsubscribeFromTopic(notificationTopic)
                         .addOnCompleteListener(task -> {
                             String msg = "Recordatorios desactivados";
                             if (!task.isSuccessful()) {
                                 msg = "Error al desactivar recordatorios";
-                                Log.w(TAG, "Desuscripción del topic fallida", task.getException());
+                                Log.w(TAG, "Desuscripción del topic 'all' fallida", task.getException());
                             }
                             showToast(msg);
                         });
@@ -123,7 +127,7 @@ public class SettingsFragment extends Fragment {
         intent.setData(Uri.parse("mailto:soporte@plascreem.com"));
         intent.putExtra(Intent.EXTRA_SUBJECT, "Soporte App Plas-Creem");
 
-        if (intent.resolveActivity(getActivity().getPackageManager()) != null) {
+        if (getActivity().getPackageManager() != null && intent.resolveActivity(getActivity().getPackageManager()) != null) {
             startActivity(intent);
         } else {
             showToast("No se encontró una aplicación de correo.");
@@ -134,7 +138,7 @@ public class SettingsFragment extends Fragment {
         Intent intent = new Intent(Intent.ACTION_VIEW);
         intent.setData(Uri.parse(url));
 
-        if (intent.resolveActivity(getActivity().getPackageManager()) != null) {
+        if (getActivity().getPackageManager() != null && intent.resolveActivity(getActivity().getPackageManager()) != null) {
             startActivity(intent);
         } else {
             showToast("No se encontró un navegador web.");
@@ -147,4 +151,3 @@ public class SettingsFragment extends Fragment {
         }
     }
 }
-
