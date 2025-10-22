@@ -1,67 +1,63 @@
 import admin from 'firebase-admin';
 
 // --- INICIALIZACIÓN DE FIREBASE ADMIN ---
+let firebaseApp;
+
 try {
+  // Solo inicializar si no hay apps ya corriendo
   if (!admin.apps.length) {
-    admin.initializeApp({
+    console.log("Inicializando Firebase Admin SDK...");
+    firebaseApp = admin.initializeApp({
       credential: admin.credential.cert({
         projectId: process.env.FIREBASE_PROJECT_ID,
         privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
         clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
       }),
     });
+    console.log("Firebase Admin SDK inicializado con éxito.");
+  } else {
+    console.log("Firebase Admin SDK ya estaba inicializado.");
+    firebaseApp = admin.app(); // Obtener la app existente
   }
 } catch (error) {
-  console.error("Error inicializando Firebase Admin SDK:", error);
+  console.error("--- ERROR CRÍTICO DURANTE LA INICIALIZACIÓN DE FIREBASE ---");
+  console.error(error);
 }
 
-// --- HANDLER DE DIAGNÓSTICO ---
+// --- HANDLER PRINCIPAL DE LA FUNCIÓN ---
 export const handler = async (event) => {
-  // Solo aceptar peticiones POST
+  if (!firebaseApp) {
+    console.error("La app de Firebase no está disponible. Revisa las credenciales (variables de entorno).");
+    return { statusCode: 500, body: "Error de configuración del servidor." };
+  }
+
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Método no permitido' };
   }
 
   try {
     const { title, body, token, topic } = JSON.parse(event.body);
-
-    console.log("--- FUNCIÓN DE DIAGNÓSTICO ACTIVA ---");
     console.log("Datos recibidos:", { title, body, token, topic });
 
-    if (!title || !body) {
-      return { statusCode: 400, body: 'El título y el cuerpo son requeridos.' };
-    }
-
-    // --- LÓGICA DE DIAGNÓSTICO: SOLO SE PERMITE ENVIAR A TOKEN ---
     if (token) {
-      // Si se proporciona un token, se envía SOLO a ese token.
-      console.log(`==> MODO DIAGNÓSTICO: Enviando a TOKEN específico: ${token.substring(0, 20)}...`);
-      await admin.messaging().send({
-        notification: { title, body },
-        token: token,
-      });
+      console.log(`Enviando a TOKEN: ${token.substring(0, 20)}...`);
+      await admin.messaging().send({ notification: { title, body }, token: token });
       console.log("Éxito: Mensaje a token procesado.");
-       return {
-        statusCode: 200,
-        body: JSON.stringify({ message: "Notificación a TOKEN enviada." }),
-      };
-
+    } else if (topic) {
+      console.log(`Enviando a TOPIC: ${topic}`);
+      await admin.messaging().send({ notification: { title, body }, topic: topic });
+      console.log("Éxito: Mensaje a topic procesado.");
     } else {
-      // Si NO se proporciona un token, la función se niega a trabajar.
-      console.error("EJECUCIÓN BLOQUEADA: Esta función de diagnóstico solo permite envíos a tokens. Se recibió un intento de envío a topic o sin destino.");
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: "MODO DIAGNÓSTICO: Solo se permiten envíos a tokens." })
-      };
+      return { statusCode: 400, body: "Se requiere un 'token' o un 'topic'." };
     }
+
+    return { statusCode: 200, body: "Notificación procesada." };
 
   } catch (error) {
-    console.error('Error catastrófico en la función de diagnóstico:', error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: error.message }),
-    };
+    console.error('Error durante el envío:', error);
+    return { statusCode: 500, body: error.message };
   }
 };
+
 
 
