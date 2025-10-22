@@ -125,11 +125,6 @@ public class SendMessageFragment extends Fragment {
             return;
         }
 
-        // --- PASO DE DIAGNÓSTICO --- //
-        String tokenSnippet = selectedUser.getFcmToken().substring(0, Math.min(selectedUser.getFcmToken().length(), 15));
-        Toast.makeText(getContext(), "Para: " + selectedUser.getNombreCompleto() + " | Token: " + tokenSnippet + "...", Toast.LENGTH_LONG).show();
-        // --- FIN DEL PASO DE DIAGNÓSTICO --- //
-
         setLoading(true);
 
         String currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
@@ -193,12 +188,14 @@ public class SendMessageFragment extends Fragment {
 
         JsonObjectRequest request = new JsonObjectRequest(Request.Method.POST, functionUrl, payload,
                 response -> {
+                    // ESTE ES EL TOAST DE ÉXITO
                     Toast.makeText(getContext(), "Notificación enviada.", Toast.LENGTH_SHORT).show();
                     messageEditText.setText("");
                     setLoading(false);
                     if (getActivity() != null) getParentFragmentManager().popBackStack();
                 },
                 error -> {
+                    // ESTE ES EL TOAST DE ERROR
                     Log.e(TAG, "Error al enviar la notificación push: " + error.toString());
                     Toast.makeText(getContext(), "Error al enviar.", Toast.LENGTH_SHORT).show();
                     setLoading(false);

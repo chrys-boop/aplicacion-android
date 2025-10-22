@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Plas-Creem</string>
+    <string name="app_name">CAP.MR</string>
     <string name="login_expediente_hint">Número de Expediente</string>
     <string name="login_password_hint">Contraseña</string>
     <string name="login_button_text">Iniciar Sesión</string>

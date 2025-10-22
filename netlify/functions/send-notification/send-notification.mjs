@@ -1,56 +1,62 @@
 import admin from 'firebase-admin';
 
 let firebaseApp;
-
 try {
-  // Solo inicializar si no se ha hecho antes
   if (!admin.apps.length) {
-    console.log("Intentando inicializar Firebase Admin SDK...");
-
-    // Lee la variable de entorno que contiene TODO el JSON
     const serviceAccountString = process.env.FIREBASE_SERVICE_ACCOUNT;
-
-    if (!serviceAccountString) {
-      throw new Error("La variable de entorno FIREBASE_SERVICE_ACCOUNT no está definida.");
-    }
-
-    // Convierte el string a un objeto JSON
+    if (!serviceAccountString) throw new Error("FIREBASE_SERVICE_ACCOUNT no definida.");
     const serviceAccount = JSON.parse(serviceAccountString);
-
-    firebaseApp = admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    });
-
-    console.log("Firebase Admin SDK inicializado con éxito.");
+    firebaseApp = admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
   } else {
     firebaseApp = admin.app();
   }
 } catch (error) {
-  console.error("--- ERROR CRÍTICO DURANTE LA INICIALIZACIÓN DE FIREBASE ---", error);
+  console.error("--- ERROR CRÍTICO DE INICIALIZACIÓN ---", error);
 }
 
 // Handler principal
 export const handler = async (event) => {
+  // Define los headers que se usarán en TODAS las respuestas.
+  const headers = {
+    'Content-Type': 'application/json'
+  };
+
   if (!firebaseApp) {
-    console.error("La app de Firebase no está disponible. Revisa la variable FIREBASE_SERVICE_ACCOUNT en Netlify.");
-    return { statusCode: 500, body: "Error de configuración del servidor." };
+    return {
+      statusCode: 500,
+      headers: headers,
+      body: JSON.stringify({ error: "Error de configuración del servidor." })
+    };
   }
 
-  // Lógica de envío
   try {
     const { title, body, token, topic } = JSON.parse(event.body);
 
     if (token) {
-      // Envío directo
       await admin.messaging().send({ notification: { title, body }, token: token });
     } else if (topic) {
-      // Envío a tema
       await admin.messaging().send({ notification: { title, body }, topic: topic });
+    } else {
+      return {
+        statusCode: 400,
+        headers: headers,
+        body: JSON.stringify({ error: "Se requiere un 'token' o un 'topic'." })
+      };
     }
 
-    return { statusCode: 200, body: "Notificación procesada." };
+    // Responde con un JSON y el header correcto para indicar éxito.
+    return {
+      statusCode: 200,
+      headers: headers,
+      body: JSON.stringify({ message: "Notificación procesada con éxito." })
+    };
 
   } catch (error) {
-    return { statusCode: 500, body: error.message };
+    return {
+      statusCode: 500,
+      headers: headers,
+      body: JSON.stringify({ error: error.message })
+    };
   }
 };
+
