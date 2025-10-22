@@ -1,34 +1,34 @@
+<!-- drawable/ic_update_modern.xml -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
 
-    <!-- Fondo circular con color Metro CDMX -->
+    <!-- Fondo circular degradado (transmite energía y movimiento) -->
     <path
-        android:fillColor="#FF6F00"
-        android:pathData="M12,2A10,10 0 1,0 22,12A10,10 0 0,0 12,2z" />
+        android:pathData="M12,2A10,10 0 1,0 22,12A10,10 0 0,0 12,2z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="radial"
+                android:centerX="12"
+                android:centerY="12"
+                android:gradientRadius="10">
+                <item android:offset="0" android:color="#00BCD4"/>  <!-- Turquesa brillante -->
+                <item android:offset="1" android:color="#1976D2"/>  <!-- Azul intenso -->
+            </gradient>
+        </aapt:attr>
+    </path>
 
-    <!-- Documento estilizado -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M8,6h6l3,3v9a1,1 0 0,1 -1,1H8a1,1 0 0,1 -1,-1V7a1,1 0 0,1 1,-1z" />
-
-    <!-- Doble línea del documento -->
-    <path
-        android:strokeColor="#FF6F00"
-        android:strokeWidth="0.8"
-        android:pathData="M9,10h6M9,13h6"
-        android:strokeLineCap="round" />
-
-    <!-- Ícono de mensaje tipo sobre -->
-    <path
-        android:fillColor="#212121"
-        android:pathData="M4,14h16a1,1 0 0,1 1,1v4a1,1 0 0,1 -1,1H4a1,1 0 0,1 -1,-1v-4a1,1 0 0,1 1,-1zM4,15l8,3l8,-3" />
-
-    <!-- Pequeño símbolo de “M” estilizada del Metro -->
+    <!-- Flechas de actualización (símbolo universal de refresh) -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M10,17h1l1,1l1,-1h1v2h-1v-0.6l-1,1l-1,-1v0.6h-1z" />
+        android:pathData="M17.65,6.35A7.95,7.95 0 0,0 12,4a8,8 0 1,0 8,8h-2a6,6 0 1,1 -6,-6c1.66,0 3.14,0.69 4.22,1.78L14,10h6V4l-2.35,2.35z" />
 
+    <!-- Sombra sutil para dar profundidad -->
+    <path
+        android:fillColor="#20000000"
+        android:pathData="M2,12a10,10 0 0,0 20,0v0.8c0,0.6 -0.4,1.2 -1,1.5H3c-0.6,-0.3 -1,-0.9 -1,-1.5V12z" />
 </vector>
+

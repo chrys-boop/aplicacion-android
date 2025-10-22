@@ -22,21 +22,18 @@ import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class SendMessageFragment extends Fragment {
+
+    private static final String TAG = "SendMessageFragment";
 
     private Spinner roleSpinner, userSpinner;
     private EditText messageEditText;
@@ -59,7 +56,6 @@ public class SendMessageFragment extends Fragment {
 
         dbManager = new DatabaseManager(getContext());
 
-        // Inicializar Vistas
         roleSpinner = view.findViewById(R.id.spinner_user_role);
         userSpinner = view.findViewById(R.id.spinner_select_user);
         messageEditText = view.findViewById(R.id.et_message_content);
@@ -67,121 +63,166 @@ public class SendMessageFragment extends Fragment {
         sendAlertButton = view.findViewById(R.id.btn_send_alert);
         progressBar = view.findViewById(R.id.progress_bar_send);
 
-        // Configurar Spinner de Roles
+        setupRoleSpinner();
+        setupUserSpinner();
+        setupButtons();
+    }
+
+    private void setupRoleSpinner() {
         ArrayAdapter<CharSequence> roleAdapter = ArrayAdapter.createFromResource(getContext(),
                 R.array.user_roles, android.R.layout.simple_spinner_item);
         roleAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         roleSpinner.setAdapter(roleAdapter);
 
-        // Configurar Spinner de Usuarios
-        userAdapter = new ArrayAdapter<>(getContext(), android.R.layout.simple_spinner_item, userList);
-        userAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        userSpinner.setAdapter(userAdapter);
-
-        // Listener para el Spinner de Roles
         roleSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                String selectedRole = parent.getItemAtPosition(position).toString();
-                if (!selectedRole.equals("Seleccionar Rol")) {
-                    loadUsersByRole(selectedRole);
+                if (position > 0) {
+                    setTargetedMessagingControlsEnabled(true);
+                    loadUsersByRole(parent.getItemAtPosition(position).toString());
+                } else {
+                    setTargetedMessagingControlsEnabled(false);
                 }
             }
-
             @Override
             public void onNothingSelected(AdapterView<?> parent) {
-            }
-        });
-
-        // Listeners para los botones
-        sendMessageButton.setOnClickListener(v -> sendMessage("message"));
-        sendAlertButton.setOnClickListener(v -> sendMessage("alert"));
-    }
-
-    private void loadUsersByRole(String role) {
-        progressBar.setVisibility(View.VISIBLE);
-        dbManager.getUsersByRole(role, new DatabaseManager.DataCallback<List<User>>() {
-            @Override
-            public void onDataReceived(List<User> data) {
-                userList.clear();
-                userList.addAll(data);
-                userAdapter.notifyDataSetChanged();
-                progressBar.setVisibility(View.GONE);
-            }
-
-            @Override
-            public void onDataCancelled(String message) {
-                Toast.makeText(getContext(), "Error: " + message, Toast.LENGTH_SHORT).show();
-                progressBar.setVisibility(View.GONE);
+                setTargetedMessagingControlsEnabled(false);
             }
         });
     }
 
-    private void sendMessage(String type) {
+    private void setupUserSpinner() {
+        userAdapter = new ArrayAdapter<>(getContext(), android.R.layout.simple_spinner_item, userList);
+        userAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        userSpinner.setAdapter(userAdapter);
+    }
+
+    private void setupButtons() {
+        sendMessageButton.setOnClickListener(v -> handleSendMessage());
+        sendAlertButton.setOnClickListener(v -> handleSendAlert());
+        setTargetedMessagingControlsEnabled(false);
+    }
+
+    private void handleSendMessage() {
+        if (userSpinner.getSelectedItemPosition() == 0 || !(userSpinner.getSelectedItem() instanceof User)) {
+            Toast.makeText(getContext(), "Por favor, selecciona un usuario específico.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         User selectedUser = (User) userSpinner.getSelectedItem();
         String messageContent = messageEditText.getText().toString().trim();
-        String currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
 
-        if (selectedUser == null) {
-            Toast.makeText(getContext(), "Por favor, selecciona un usuario.", Toast.LENGTH_SHORT).show();
+        if (selectedUser.getUid() == null) {
+            Toast.makeText(getContext(), "Selección de usuario inválida.", Toast.LENGTH_SHORT).show();
             return;
         }
         if (messageContent.isEmpty()) {
             Toast.makeText(getContext(), "El mensaje no puede estar vacío.", Toast.LENGTH_SHORT).show();
             return;
         }
+        if (selectedUser.getFcmToken() == null || selectedUser.getFcmToken().isEmpty()) {
+            Toast.makeText(getContext(), "Este usuario no tiene un token de notificación activo.", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
-        progressBar.setVisibility(View.VISIBLE);
+        // --- PASO DE DIAGNÓSTICO --- //
+        String tokenSnippet = selectedUser.getFcmToken().substring(0, Math.min(selectedUser.getFcmToken().length(), 15));
+        Toast.makeText(getContext(), "Para: " + selectedUser.getNombreCompleto() + " | Token: " + tokenSnippet + "...", Toast.LENGTH_LONG).show();
+        // --- FIN DEL PASO DE DIAGNÓSTICO --- //
 
+        setLoading(true);
+
+        String currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
         DatabaseReference messagesRef = FirebaseDatabase.getInstance().getReference("direct_messages").child(selectedUser.getUid());
         String messageId = messagesRef.push().getKey();
-        long timestamp = System.currentTimeMillis();
-
-        DirectMessage directMessage = new DirectMessage(messageId, currentUserId, selectedUser.getUid(), messageContent, type, timestamp);
+        DirectMessage directMessage = new DirectMessage(messageId, currentUserId, selectedUser.getUid(), messageContent, "message", System.currentTimeMillis());
 
         messagesRef.child(messageId).setValue(directMessage).addOnCompleteListener(task -> {
             if (task.isSuccessful()) {
-                // Mensaje guardado en DB, ahora enviamos la notificación push
-                sendPushNotificationToUser(selectedUser.getFcmToken(), type, messageContent);
+                sendPushNotification("Nuevo Mensaje", messageContent, selectedUser.getFcmToken(), null);
             } else {
                 Toast.makeText(getContext(), "Error al guardar el mensaje.", Toast.LENGTH_SHORT).show();
-                progressBar.setVisibility(View.GONE);
+                setLoading(false);
             }
         });
     }
 
-    private void sendPushNotificationToUser(String userToken, String type, String message) {
-        String title = type.equals("alert") ? "¡Alerta Importante!" : "Nuevo Mensaje";
+    private void handleSendAlert() {
+        String messageContent = messageEditText.getText().toString().trim();
+        if (messageContent.isEmpty()) {
+            Toast.makeText(getContext(), "El mensaje de alerta no puede estar vacío.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        setLoading(true);
+        sendPushNotification("¡Alerta Importante!", messageContent, null, "all");
+    }
 
-        // URL de la función Netlify
+    private void loadUsersByRole(String role) {
+        setLoading(true);
+        dbManager.getUsersByRole(role, new DatabaseManager.DataCallback<List<User>>() {
+            @Override
+            public void onDataReceived(List<User> data) {
+                userList.clear();
+                userList.add(new User("Seleccionar Usuario"));
+                userList.addAll(data);
+                userAdapter.notifyDataSetChanged();
+                userSpinner.setSelection(0);
+                setLoading(false);
+            }
+            @Override
+            public void onDataCancelled(String message) {
+                Toast.makeText(getContext(), "Error: " + message, Toast.LENGTH_SHORT).show();
+                setLoading(false);
+            }
+        });
+    }
+
+    private void sendPushNotification(String title, String body, @Nullable String token, @Nullable String topic) {
         String functionUrl = "https://capacitacion-mrodante.netlify.app/.netlify/functions/send-notification";
-
         JSONObject payload = new JSONObject();
         try {
-            payload.put("token", userToken);
             payload.put("title", title);
-            payload.put("body", message);
+            payload.put("body", body);
+            if (token != null) payload.put("token", token);
+            if (topic != null) payload.put("topic", topic);
         } catch (JSONException e) {
-            Log.e("SendMessageFragment", "Error creando JSON para notificación", e);
-            progressBar.setVisibility(View.GONE);
+            Log.e(TAG, "Error creando JSON para notificación", e);
+            setLoading(false);
             return;
         }
 
         JsonObjectRequest request = new JsonObjectRequest(Request.Method.POST, functionUrl, payload,
                 response -> {
-                    Toast.makeText(getContext(), "Notificación enviada con éxito", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), "Notificación enviada.", Toast.LENGTH_SHORT).show();
                     messageEditText.setText("");
-                    progressBar.setVisibility(View.GONE);
-                    getParentFragmentManager().popBackStack(); // Regresar
+                    setLoading(false);
+                    if (getActivity() != null) getParentFragmentManager().popBackStack();
                 },
                 error -> {
-                    Log.e("NotificationError", "Error: " + error.toString());
-                    Toast.makeText(getContext(), "Error al enviar la notificación push", Toast.LENGTH_SHORT).show();
-                    progressBar.setVisibility(View.GONE);
+                    Log.e(TAG, "Error al enviar la notificación push: " + error.toString());
+                    Toast.makeText(getContext(), "Error al enviar.", Toast.LENGTH_SHORT).show();
+                    setLoading(false);
                 }
         );
+        Volley.newRequestQueue(requireContext()).add(request);
+    }
 
-        RequestQueue queue = Volley.newRequestQueue(requireContext());
-        queue.add(request);
+    private void setLoading(boolean isLoading) {
+        progressBar.setVisibility(isLoading ? View.VISIBLE : View.GONE);
+        sendMessageButton.setEnabled(!isLoading);
+        sendAlertButton.setEnabled(!isLoading);
+        roleSpinner.setEnabled(!isLoading);
+        userSpinner.setEnabled(!isLoading);
+    }
+
+    private void setTargetedMessagingControlsEnabled(boolean isEnabled) {
+        userSpinner.setEnabled(isEnabled);
+        sendMessageButton.setEnabled(isEnabled);
+        if (!isEnabled) {
+            userList.clear();
+            userList.add(new User("Seleccione un rol primero"));
+            userAdapter.notifyDataSetChanged();
+            userSpinner.setSelection(0);
+        }
     }
 }

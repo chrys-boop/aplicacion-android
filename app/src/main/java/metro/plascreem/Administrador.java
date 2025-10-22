@@ -1,14 +1,21 @@
 package metro.plascreem;
 
 import android.os.Bundle;
+import android.view.Menu;
+import android.view.MenuInflater;
 import android.view.MenuItem;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 import android.util.Log;
+
+// Imports para el botón flotante y el fragmento de mensaje
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import metro.plascreem.SendMessageFragment;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.firebase.messaging.FirebaseMessaging;
@@ -24,7 +31,6 @@ public class Administrador extends AppCompatActivity {
     private final Fragment filesFragment = new AdminFilesFragment();
     private final Fragment calendarFragment = new CalendarFragment();
     private final Fragment documentsFragment = new UploadDocumentsFragment();
-    // --- NUEVO FRAGMENTO AÑADIDO ---
     private final Fragment eventListFragment = new EventListFragment();
 
     @Override
@@ -32,7 +38,18 @@ public class Administrador extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_administrador);
 
-        // Suscribir al usuario al topic \"all\" para recibir notificaciones
+        // --- CONFIGURACIÓN DE LA TOOLBAR ---
+        Toolbar toolbar = findViewById(R.id.toolbar_administrador);
+        setSupportActionBar(toolbar);
+
+        // --- LÓGICA DEL BOTÓN FLOTANTE ---
+        FloatingActionButton fab = findViewById(R.id.fab_send_message);
+        fab.setOnClickListener(view -> {
+            // Carga el fragmento para enviar mensajes dirigidos
+            replaceFragment(new SendMessageFragment(), true);
+        });
+
+        // Suscribir al usuario al topic "all" para recibir notificaciones
         subscribeToNotifications();
         bottomNavigationView = findViewById(R.id.admin_bottom_navigation);
 
@@ -47,14 +64,14 @@ public class Administrador extends AppCompatActivity {
                 selectedFragment = filesFragment;
             } else if (itemId == R.id.nav_calendario) {
                 selectedFragment = calendarFragment;
-            } else if (itemId == R.id.nav_event_history) { // --- NUEVA CONDICIÓN AÑADIDA ---
+            } else if (itemId == R.id.nav_event_history) {
                 selectedFragment = eventListFragment;
             } else if (itemId == R.id.nav_documentos) {
                 selectedFragment = documentsFragment;
             }
 
             if (selectedFragment != null) {
-                replaceFragment(selectedFragment);
+                replaceFragment(selectedFragment, false); // No añadir a la pila de retroceso
                 return true;
             }
             return false;
@@ -66,15 +83,43 @@ public class Administrador extends AppCompatActivity {
         }
     }
 
-    private void replaceFragment(Fragment fragment) {
+    // --- MÉTODO PARA CREAR EL MENÚ DE OPCIONES EN LA TOOLBAR ---
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.main_options_menu, menu);
+        return true;
+    }
+
+    // --- MÉTODO PARA MANEJAR CLICS EN EL MENÚ DE OPCIONES ---
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        int itemId = item.getItemId();
+        if (itemId == R.id.action_change_password) {
+            replaceFragment(new ChangePasswordFragment(), true); // Añadir a la pila de retroceso
+            return true;
+        } else if (itemId == R.id.action_update_email) {
+            replaceFragment(new UpdateEmailFragment(), true); // Añadir a la pila de retroceso
+            return true;
+        } else if (itemId == R.id.action_settings) {
+            replaceFragment(new SettingsFragment(), true); // Añadir a la pila de retroceso
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    private void replaceFragment(Fragment fragment, boolean addToBackStack) {
         FragmentManager fragmentManager = getSupportFragmentManager();
         FragmentTransaction transaction = fragmentManager.beginTransaction();
         transaction.replace(R.id.admin_fragment_container, fragment);
+        if (addToBackStack) {
+            transaction.addToBackStack(null); // Permite volver al fragmento anterior
+        }
         transaction.commit();
     }
 
     /**
-     * Suscribe al usuario al topic \"all\" para recibir notificaciones push
+     * Suscribe al usuario al topic "all" para recibir notificaciones push
      */
     private void subscribeToNotifications() {
         FirebaseMessaging.getInstance().subscribeToTopic("all")
@@ -87,3 +132,4 @@ public class Administrador extends AppCompatActivity {
                 });
     }
 }
+

@@ -2,24 +2,26 @@ package metro.plascreem;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 import android.os.Bundle;
+import android.view.Menu;
+import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.View;
 import android.util.Log;
 
+// Importamos las clases necesarias
 import com.google.android.material.bottomnavigation.BottomNavigationView;
-import com.google.android.material.navigation.NavigationBarView;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.messaging.FirebaseMessaging;
-
-// Reutilizamos el Fragmento del Calendario
-// Reutilizamos el Fragmento de Perfil para la edición
+import metro.plascreem.SendMessageFragment; // <-- El fragmento correcto
 
 public class Personal_Administrativo extends AppCompatActivity {
 
     private static final String TAG ="PersonalAdmin";
-    // ID del contenedor de fragmentos
     private static final int FRAGMENT_CONTAINER_ID = R.id.admin_fragment_container;
 
     @Override
@@ -27,63 +29,91 @@ public class Personal_Administrativo extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_personal_administrativo);
 
-        // Obtener el BottomNavigationView// Suscribir al usuario al topic \"all\" para recibir notificaciones
-        subscribeToNotifications();
-        BottomNavigationView bottomNav = findViewById(R.id.admin_bottom_navigation);
+        // --- CONFIGURACIÓN DE LA TOOLBAR ---
+        Toolbar toolbar = findViewById(R.id.toolbar_personal_administrativo);
+        setSupportActionBar(toolbar);
 
-        // Listener para la navegación inferior
-        bottomNav.setOnItemSelectedListener(new NavigationBarView.OnItemSelectedListener() {
-            @Override
-            public boolean onNavigationItemSelected(@NonNull MenuItem item) {
-                // Usamos el ID de cada item definido en menu_admin_navigation.xml
-                int itemId = item.getItemId();
-
-                if (itemId == R.id.nav_perfil) {
-                    return loadFragment(new AdminProfileFragment(), false);
-                } else if (itemId == R.id.nav_archivos) {
-                    // Cargar el fragmento para subir/descargar archivos
-                    return loadFragment(new AdminFilesFragment(), true);
-                } else if (itemId == R.id.nav_calendario) {
-                    // Reutilizamos el Fragmento de Calendario
-                    return loadFragment(new CalendarFragment(), true);
-                } else if (itemId == R.id.nav_documentos) {
-                    // Cargar el fragmento para Histórico/Plantillas
-                    return loadFragment(new AdminTrackingFragment(), true);
-                }
-                return false;
-            }
+        // --- LÓGICA DEL BOTÓN FLOTANTE ---
+        FloatingActionButton fab = findViewById(R.id.fab_send_message);
+        fab.setOnClickListener(view -> {
+            // Carga el fragmento para enviar mensajes dirigidos, como se especificó
+            replaceFragment(new SendMessageFragment(), true);
         });
 
-        // Cargar el fragmento de Perfil como la vista inicial al abrir la Activity
+        // Suscribir al usuario al topic \"all\" para recibir notificaciones
+        subscribeToNotifications();
+
+        BottomNavigationView bottomNav = findViewById(R.id.admin_bottom_navigation);
+        bottomNav.setItemIconTintList(null);
+
+        // Listener para la navegación inferior
+        bottomNav.setOnItemSelectedListener(item -> {
+            int itemId = item.getItemId();
+            if (itemId == R.id.nav_perfil) {
+                return loadFragment(new AdminProfileFragment(), false);
+            } else if (itemId == R.id.nav_archivos) {
+                return loadFragment(new AdminFilesFragment(), true);
+            } else if (itemId == R.id.nav_calendario) {
+                return loadFragment(new CalendarFragment(), true);
+            } else if (itemId == R.id.nav_documentos) {
+                return loadFragment(new AdminTrackingFragment(), true);
+            }
+            return false;
+        });
+
+        // Cargar el fragmento de Perfil como la vista inicial
         if (savedInstanceState == null) {
             bottomNav.setSelectedItemId(R.id.nav_perfil);
         }
     }
 
-    /**
-     * Reemplaza el fragmento actual en el contenedor.
-     * @param fragment El fragmento a cargar.
-     * @param addToBackStack Si se añade a la pila (usar 'true' para navegación secundaria).
-     * @return true si la operación fue exitosa.
-     */
+    // --- MÉTODO PARA CREAR EL MENÚ DE OPCIONES ---
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.main_options_menu, menu);
+        return true;
+    }
+
+    // --- MÉTODO PARA MANEJAR CLICS EN EL MENÚ DE OPCIONES ---
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        int itemId = item.getItemId();
+        if (itemId == R.id.action_change_password) {
+            replaceFragment(new ChangePasswordFragment(), true);
+            return true;
+        } else if (itemId == R.id.action_update_email) {
+            replaceFragment(new UpdateEmailFragment(), true);
+            return true;
+        } else if (itemId == R.id.action_settings) {
+            replaceFragment(new SettingsFragment(), true);
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
     private boolean loadFragment(Fragment fragment, boolean addToBackStack) {
         FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
-
         transaction.replace(FRAGMENT_CONTAINER_ID, fragment);
-
         if (addToBackStack) {
-            transaction.addToBackStack(fragment.getClass().getSimpleName());
+            transaction.addToBackStack(null);
         } else {
-            // Si es una pestaña principal (Perfil/Home), limpiamos la pila
-            getSupportFragmentManager().popBackStackImmediate(null, FragmentManager.POP_BACK_STACK_INCLUSIVE);
+            getSupportFragmentManager().popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE);
         }
-
         transaction.commit();
         return true;
     }
-    /**
-     * Suscribe al usuario al topic \"all\" para recibir notificaciones push
-     */
+
+    // --- MÉTODO AUXILIAR PARA LOS FRAGMENTOS DEL MENÚ DE OPCIONES ---
+    private void replaceFragment(Fragment fragment, boolean addToBackStack) {
+        FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
+        transaction.replace(FRAGMENT_CONTAINER_ID, fragment);
+        if (addToBackStack) {
+            transaction.addToBackStack(null);
+        }
+        transaction.commit();
+    }
+
     private void subscribeToNotifications() {
         FirebaseMessaging.getInstance().subscribeToTopic("all")
                 .addOnCompleteListener(task -> {

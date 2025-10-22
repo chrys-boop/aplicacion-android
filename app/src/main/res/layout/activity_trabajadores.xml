@@ -1,131 +1,147 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- El FrameLayout raíz es necesario para las transacciones de fragmentos, como la edición del perfil -->
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/trabajadores_container"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F4F4F4"
+    android:orientation="vertical"
+    android:background="?android:attr/colorBackground"
     tools:context=".Trabajadores">
 
-    <LinearLayout
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar_trabajadores"
+        app:title="Trabajadores"
+        app:titleTextColor="@color/black"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical">
+        android:layout_height="?attr/actionBarSize"
+        android:background="?attr/colorPrimary"
+        android:elevation="4dp"
+        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+        app:popupTheme="@style/AppTheme.PopupOverlay" />
 
-        <!-- Tarjeta de Perfil del Trabajador -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/profile_card"
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:layout_marginTop="16dp"
-            android:layout_marginEnd="16dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="4dp">
+            android:layout_height="match_parent"
+            android:orientation="vertical">
 
-            <androidx.constraintlayout.widget.ConstraintLayout
+            <!-- Tarjeta de Perfil del Trabajador -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/profile_card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:padding="16dp">
+                android:layout_marginStart="16dp"
+                android:layout_marginTop="16dp"
+                android:layout_marginEnd="16dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="4dp">
 
-                <!-- Icono de perfil -->
-                <ImageView
-                    android:id="@+id/profile_icon"
-                    android:layout_width="60dp"
-                    android:layout_height="60dp"
-                    android:src="@drawable/ic_usuario"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent"
-                    android:contentDescription="@string/profile_icon_desc" />
-
-                <!-- Nombre del Trabajador -->
-                <TextView
-                    android:id="@+id/tv_worker_name"
-                    android:layout_width="0dp"
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
-                    tools:text="Nombre del Trabajador"
-                    android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
-                    app:layout_constraintStart_toEndOf="@id/profile_icon"
-                    app:layout_constraintTop_toTopOf="@id/profile_icon"
-                    app:layout_constraintEnd_toEndOf="parent"/>
+                    android:padding="16dp">
 
-                <!-- Detalles (Expediente, Área, Rol) -->
-                <TextView
-                    android:id="@+id/tv_worker_expediente"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:lineSpacingExtra="4dp"
-                    android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
-                    android:textColor="?android:attr/textColorSecondary"
-                    app:layout_constraintStart_toStartOf="@id/tv_worker_name"
-                    app:layout_constraintTop_toBottomOf="@id/tv_worker_name"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    tools:text="Expediente: N/A\nÁrea: N/A\nRol: N/A"/>
+                    <!-- Icono de perfil -->
+                    <ImageView
+                        android:id="@+id/profile_icon"
+                        android:layout_width="60dp"
+                        android:layout_height="60dp"
+                        android:src="@drawable/ic_usuario"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        android:contentDescription="@string/profile_icon_desc" />
 
-                <!-- Divisor -->
-                <View
-                    android:id="@+id/button_divider"
-                    android:layout_width="0dp"
-                    android:layout_height="1dp"
-                    android:layout_marginTop="16dp"
-                    android:background="?android:attr/listDivider"
-                    app:layout_constraintTop_toBottomOf="@id/tv_worker_expediente"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintEnd_toEndOf="parent"/>
-
-                <!-- Contenedor de Botones de Acción -->
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:layout_marginTop="8dp"
-                    app:layout_constraintTop_toBottomOf="@id/button_divider"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintEnd_toEndOf="parent">
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btn_edit_profile"
-                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                    <!-- Nombre del Trabajador -->
+                    <TextView
+                        android:id="@+id/tv_worker_name"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/action_edit_profile"/>
+                        android:layout_marginStart="16dp"
+                        tools:text="Nombre del Trabajador"
+                        android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
+                        app:layout_constraintStart_toEndOf="@id/profile_icon"
+                        app:layout_constraintTop_toTopOf="@id/profile_icon"
+                        app:layout_constraintEnd_toEndOf="parent"/>
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btn_logout"
-                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                    <!-- Detalles (Expediente, Área, Rol) -->
+                    <TextView
+                        android:id="@+id/tv_worker_expediente"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:textColor="?attr/colorError"
-                        android:text="@string/action_logout"/>
-                </LinearLayout>
+                        android:layout_marginTop="4dp"
+                        android:lineSpacingExtra="4dp"
+                        android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+                        android:textColor="?android:attr/textColorSecondary"
+                        app:layout_constraintStart_toStartOf="@id/tv_worker_name"
+                        app:layout_constraintTop_toBottomOf="@id/tv_worker_name"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        tools:text="Expediente: N/A\nÁrea: N/A\nRol: N/A"/>
 
-            </androidx.constraintlayout.widget.ConstraintLayout>
-        </com.google.android.material.card.MaterialCardView>
+                    <!-- Divisor -->
+                    <View
+                        android:id="@+id/button_divider"
+                        android:layout_width="0dp"
+                        android:layout_height="1dp"
+                        android:layout_marginTop="16dp"
+                        android:background="?android:attr/listDivider"
+                        app:layout_constraintTop_toBottomOf="@id/tv_worker_expediente"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent"/>
 
-        <!-- Título de la Sección de Manuales -->
-        <TextView
-            android:id="@+id/manuals_title"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/title_manuals_and_diagrams"
-            android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
-            android:padding="16dp"/>
+                    <!-- Contenedor de Botones de Acción -->
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="8dp"
+                        app:layout_constraintTop_toBottomOf="@id/button_divider"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent">
 
-        <!-- Contenedor para la lista de manuales (Fragmento) -->
-        <FrameLayout
-            android:id="@+id/manuals_fragment_container"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="16dp"
-            android:layout_marginBottom="16dp" />
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_edit_profile"
+                            style="@style/Widget.MaterialComponents.Button.TextButton"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/action_edit_profile"/>
 
-    </LinearLayout>
-</FrameLayout>
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_logout"
+                            style="@style/Widget.MaterialComponents.Button.TextButton"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:textColor="?attr/colorError"
+                            android:text="@string/action_logout"/>
+                    </LinearLayout>
+
+                </androidx.constraintlayout.widget.ConstraintLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Título de la Sección de Manuales -->
+            <TextView
+                android:id="@+id/manuals_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/title_manuals_and_diagrams"
+                android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
+                android:padding="16dp"/>
+
+            <!-- Contenedor para la lista de manuales (Fragmento) -->
+            <FrameLayout
+                android:id="@+id/manuals_fragment_container"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
+                android:layout_marginBottom="16dp" />
+
+        </LinearLayout>
+    </FrameLayout>
+</LinearLayout>

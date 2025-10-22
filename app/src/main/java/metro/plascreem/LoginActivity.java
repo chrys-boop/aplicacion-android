@@ -1,4 +1,5 @@
 package metro.plascreem;
+
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -16,8 +17,6 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.messaging.FirebaseMessaging;
@@ -56,13 +55,14 @@ public class LoginActivity extends AppCompatActivity {
                 return;
             }
 
+            // Paso 1: Iniciar sesión con Firebase Auth
             databaseManager.loginUser(email, password, new DatabaseManager.AuthListener() {
                 @Override
                 public void onSuccess() {
-                    ToastUtils.showShortToast(LoginActivity.this, "Inicio de sesión exitoso.");
                     FirebaseUser user = mAuth.getCurrentUser();
                     if (user != null) {
-                        updateFcmTokenAndRedirect(user.getUid());
+                        // Paso 2: Si el login es exitoso, actualizar el token y redirigir
+                        loginSuccessSequence(user.getUid());
                     } else {
                         ToastUtils.showLongToast(LoginActivity.this, "Error: no se pudo obtener el usuario después del inicio de sesión.");
                     }
@@ -94,10 +94,8 @@ public class LoginActivity extends AppCompatActivity {
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
                         ToastUtils.showLongToast(this, "Se ha enviado un correo para restablecer su contraseña.");
-                        Log.d(TAG, "Email de restablecimiento enviado a: " + email);
                     } else {
                         ToastUtils.showLongToast(this, "Error al enviar el correo de restablecimiento.");
-                        Log.e(TAG, "Error en sendPasswordResetEmail", task.getException());
                     }
                 });
     }
@@ -107,30 +105,38 @@ public class LoginActivity extends AppCompatActivity {
         super.onStart();
         FirebaseUser currentUser = mAuth.getCurrentUser();
         if (currentUser != null) {
-            ToastUtils.showShortToast(this, "Sesión ya iniciada. Redirigiendo...");
-            updateFcmTokenAndRedirect(currentUser.getUid());
+            // Si ya hay una sesión, es crucial refrescar el token y redirigir.
+            loginSuccessSequence(currentUser.getUid());
         }
     }
 
-    private void updateFcmTokenAndRedirect(String userId) {
-        FirebaseMessaging.getInstance().getToken().addOnCompleteListener(task -> {
-            if (task.isSuccessful() && task.getResult() != null) {
-                String fcmToken = task.getResult();
+    private void loginSuccessSequence(String userId) {
+        // Paso 2.1: Obtener el token de FCM más reciente del dispositivo
+        FirebaseMessaging.getInstance().getToken().addOnCompleteListener(tokenTask -> {
+            if (tokenTask.isSuccessful() && tokenTask.getResult() != null) {
+                String fcmToken = tokenTask.getResult();
+
+                // Paso 2.2: Guardar el token en la base de datos
                 databaseManager.updateUserFcmToken(userId, fcmToken, new DatabaseManager.DataSaveListener() {
                     @Override
                     public void onSuccess() {
                         Log.d(TAG, "Token de FCM actualizado exitosamente para el usuario: " + userId);
+                        // Paso 3: Si el token se guarda, obtener datos y redirigir
                         fetchUserDataAndRedirect(userId);
                     }
 
                     @Override
                     public void onFailure(String message) {
                         Log.e(TAG, "Error al actualizar el token de FCM: " + message);
+                        ToastUtils.showShortToast(LoginActivity.this, "Advertencia: No se pudo registrar para notificaciones.");
+                        // AUN ASÍ REDIRIGIR para que el usuario pueda usar la app
                         fetchUserDataAndRedirect(userId);
                     }
                 });
             } else {
-                Log.e(TAG, "No se pudo obtener el token de FCM.", task.getException());
+                Log.e(TAG, "No se pudo obtener el token de FCM.", tokenTask.getException());
+                ToastUtils.showShortToast(LoginActivity.this, "Advertencia: No se pudo obtener token para notificaciones.");
+                // AUN ASÍ REDIRIGIR para que el usuario pueda usar la app
                 fetchUserDataAndRedirect(userId);
             }
         });
@@ -141,11 +147,11 @@ public class LoginActivity extends AppCompatActivity {
             @Override
             public void onDataReceived(Map<String, Object> userData) {
                 if (userData == null || !(userData.get("userType") instanceof String)) {
-                    ToastUtils.showLongToast(LoginActivity.this, "No se pudo determinar el rol del usuario. El rol no está definido o es inválido.");
+                    ToastUtils.showLongToast(LoginActivity.this, "No se pudo determinar el rol del usuario.");
                     return;
                 }
 
-                subscribeToNotifications();
+                subscribeToNotifications(); // Llamada al método original
 
                 String userType = ((String) userData.get("userType")).trim();
                 String nombre = (String) userData.get("nombreCompleto");
@@ -153,6 +159,7 @@ public class LoginActivity extends AppCompatActivity {
 
                 Intent intent;
 
+                // LÓGICA ORIGINAL DEL SWITCH RESTAURADA
                 switch (userType) {
                     case "Administrador":
                         intent = new Intent(LoginActivity.this, Administrador.class);
@@ -175,6 +182,7 @@ public class LoginActivity extends AppCompatActivity {
                         return;
                 }
 
+                // LÓGICA ORIGINAL DE PUTEXTRA RESTAURADA
                 if (nombre != null) {
                     intent.putExtra("NOMBRE_COMPLETO", nombre);
                 }
@@ -194,6 +202,7 @@ public class LoginActivity extends AppCompatActivity {
         });
     }
 
+    // MÉTODO ORIGINAL RESTAURADO
     private void subscribeToNotifications() {
         Log.d(TAG, "🔔 Iniciando suscripción a notificaciones...");
 
@@ -226,7 +235,6 @@ public class LoginActivity extends AppCompatActivity {
                         Log.e(TAG, "❌❌❌ ERROR al suscribir al topic 'all' ❌❌❌");
                         if (task.getException() != null) {
                             Log.e(TAG, "Detalle del error:", task.getException());
-                            task.getException().printStackTrace();
                         }
                         ToastUtils.showShortToast(LoginActivity.this, "Error al activar notificaciones");
                     }

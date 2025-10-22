@@ -1,11 +1,17 @@
 package metro.plascreem;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.widget.Toast;
 
 import com.google.firebase.auth.FirebaseAuth;
@@ -14,45 +20,36 @@ import com.google.firebase.messaging.FirebaseMessaging;
 
 import java.util.Map;
 
-// Importar la clase de View Binding generada
 import metro.plascreem.databinding.ActivityTrabajadoresBinding;
 
 public class Trabajadores extends AppCompatActivity {
 
     private static final String TAG = "Trabajadores";
-
-    // Declarar el objeto de View Binding
     private ActivityTrabajadoresBinding binding;
-
     private DatabaseManager databaseManager;
     private FirebaseAuth mAuth;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        // Inflar el layout usando View Binding
         binding = ActivityTrabajadoresBinding.inflate(getLayoutInflater());
-        // Establecer la vista raíz del binding como el contenido de la actividad
         setContentView(binding.getRoot());
+
+        // --- CONFIGURACIÓN DE LA TOOLBAR ---
+        setSupportActionBar(binding.toolbarTrabajadores);
 
         subscribeToNotifications();
 
-        // --- INICIALIZACIÓN ---
         mAuth = FirebaseAuth.getInstance();
         databaseManager = new DatabaseManager(getApplicationContext());
 
-        // Cargar el fragmento de los manuales por defecto
         if (savedInstanceState == null) {
             getSupportFragmentManager().beginTransaction()
                     .replace(binding.manualsFragmentContainer.getId(), new WorkerManualsFragment())
                     .commit();
         }
 
-        // --- CORRECCIÓN: CONFIGURACIÓN DE LISTENERS USANDO BINDING DIRECTAMENTE ---
-        binding.btnEditProfile.setOnClickListener(v -> {
-            navigateToEditProfile();
-        });
+        binding.btnEditProfile.setOnClickListener(v -> navigateToEditProfile());
 
         binding.btnLogout.setOnClickListener(v -> {
             mAuth.signOut();
@@ -62,6 +59,31 @@ public class Trabajadores extends AppCompatActivity {
             startActivity(intent);
             finish();
         });
+    }
+
+    // --- MÉTODO PARA CREAR EL MENÚ DE OPCIONES ---
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.main_options_menu, menu);
+        return true;
+    }
+
+    // --- MÉTODO PARA MANEJAR CLICS EN EL MENÚ DE OPCIONES ---
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        int itemId = item.getItemId();
+        if (itemId == R.id.action_change_password) {
+            replaceFragment(new ChangePasswordFragment(), true);
+            return true;
+        } else if (itemId == R.id.action_update_email) {
+            replaceFragment(new UpdateEmailFragment(), true);
+            return true;
+        } else if (itemId == R.id.action_settings) {
+            replaceFragment(new SettingsFragment(), true);
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     @Override
@@ -78,13 +100,10 @@ public class Trabajadores extends AppCompatActivity {
                 @Override
                 public void onDataReceived(Map<String, Object> userData) {
                     if (userData != null) {
-                        // --- CORRECCIÓN: Usar binding para acceder a los TextViews directamente ---
                         binding.tvWorkerName.setText(String.valueOf(userData.getOrDefault("nombreCompleto", "Nombre no disponible")));
-
                         String expediente = String.valueOf(userData.getOrDefault("numeroExpediente", "N/A"));
                         String area = String.valueOf(userData.getOrDefault("area", "N/A"));
                         String titular = String.valueOf(userData.getOrDefault("titular", "N/A"));
-
                         String workerDetails = "Expediente: " + expediente + "\n" +
                                 "Área: " + area + "\n" +
                                 "Rol: " + titular;
@@ -101,10 +120,17 @@ public class Trabajadores extends AppCompatActivity {
     }
 
     private void navigateToEditProfile() {
-        getSupportFragmentManager().beginTransaction()
-                .replace(binding.trabajadoresContainer.getId(), new EditProfileFragment())
-                .addToBackStack(null)
-                .commit();
+        replaceFragment(new EditProfileFragment(), true);
+    }
+
+    // --- MÉTODO AUXILIAR PARA LOS FRAGMENTOS DEL MENÚ ---
+    private void replaceFragment(Fragment fragment, boolean addToBackStack) {
+        FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
+        transaction.replace(binding.trabajadoresContainer.getId(), fragment); // Reemplaza el contenedor raíz
+        if (addToBackStack) {
+            transaction.addToBackStack(null);
+        }
+        transaction.commit();
     }
 
     private void subscribeToNotifications() {

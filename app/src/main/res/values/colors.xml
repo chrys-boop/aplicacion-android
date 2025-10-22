@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
+    <!-- Colores originales del usuario -->
     <color name="purple_200">#FFBB86FC</color>
     <color name="purple_500">#FF6200EE</color>
     <color name="purple_700">#FF3700B3</color>
@@ -22,10 +21,22 @@
     <color name="colorActivo">#FF5722</color>
     <color name="colorInactivo">#D3D3D3</color>
 
+    <!-- Colores base para temas -->
+    <color name="colorPrimary">#FF6200EE</color> <!-- Morado -->
+    <color name="colorPrimaryVariant">#FF3700B3</color> <!-- Morado oscuro -->
+    <color name="colorOnPrimary">#FFFFFFFF</color> <!-- Blanco -->
+    <color name="backgroundColor">#FFFFFFFF</color> <!-- Blanco -->
+    <color name="surfaceColor">#FFFFFFFF</color> <!-- Blanco -->
+    <color name="colorOnSurface">#FF000000</color> <!-- Negro, para texto sobre superficies -->
+    <color name="textColorPrimary">#FF000000</color> <!-- Negro -->
+    <color name="textColorSecondary">#8A000000</color> <!-- Negro con 54% de opacidad -->
+
+    <!-- Colores estándar -->
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
     <!-- Colores para los tipos de evento -->
     <color name="colorDocument">#1976D2</color> <!-- Azul -->
     <color name="colorMedia">#388E3C</color>    <!-- Verde -->
     <color name="colorSimple">#607D8B</color>     <!-- Gris -->
-    <color name="background">#FFFFFF</color> <!-- fondo blanco -->
-
 </resources>

@@ -14,6 +14,10 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.widget.Toast;
 
+// Imports para el botón flotante y el fragmento de mensaje
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import metro.plascreem.SendMessageFragment;
+
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.firebase.messaging.FirebaseMessaging;
 
@@ -30,10 +34,18 @@ public class Enlaces extends AppCompatActivity {
         Toolbar toolbar = findViewById(R.id.toolbar_enlaces);
         setSupportActionBar(toolbar);
 
-        // Suscribir al usuario al topic \"all\" para recibir notificaciones
+        // --- LÓGICA DEL BOTÓN FLOTANTE ---
+        FloatingActionButton fab = findViewById(R.id.fab_send_message);
+        fab.setOnClickListener(view -> {
+            // Carga el fragmento para enviar mensajes dirigidos
+            replaceFragment(new SendMessageFragment(), true);
+        });
+
+        // Suscribir al usuario al topic "all" para recibir notificaciones
         subscribeToNotifications();
 
         BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
+        bottomNav.setItemIconTintList(null);
         bottomNav.setOnNavigationItemSelectedListener(navListener);
 
         // Cargar el fragmento de perfil por defecto
@@ -46,7 +58,7 @@ public class Enlaces extends AppCompatActivity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
-        inflater.inflate(R.menu.enlace_options_menu, menu);
+        inflater.inflate(R.menu.main_options_menu, menu);
         return true;
     }
 
@@ -55,15 +67,12 @@ public class Enlaces extends AppCompatActivity {
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         int itemId = item.getItemId();
         if (itemId == R.id.action_change_password) {
-            // Abrir el fragmento para cambiar la contraseña
             replaceFragment(new ChangePasswordFragment(), true);
             return true;
         } else if (itemId == R.id.action_update_email) {
-            // Abrir el fragmento para actualizar el correo
             replaceFragment(new UpdateEmailFragment(), true);
             return true;
         } else if (itemId == R.id.action_settings) {
-            // Abrir el fragmento de configuración
             replaceFragment(new SettingsFragment(), true);
             return true;
         }
@@ -115,3 +124,4 @@ public class Enlaces extends AppCompatActivity {
                 });
     }
 }
+
