@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">CAP.MR</string>
+    <string name="app_name">Capacitacion-Material Rodante</string>
     <string name="login_expediente_hint">Número de Expediente</string>
     <string name="login_password_hint">Contraseña</string>
     <string name="login_button_text">Iniciar Sesión</string>
@@ -104,6 +104,12 @@ En consecuencia, el mal uso de los mismos será responsabilidad de la autoridad 
 
 Lo anterior se fundamenta en los artículos 6, apartado A, fracción II de la Constitución Política de los Estados Unidos Mexicanos; 3, fracción IX; 6, 9, 10, 55, 56, 57, 59, 60, 61, 63 y 127, fracciones VI y VII, de la Ley de Protección de Datos Personales en Posesión de Sujetos Obligados de la Ciudad de México; y 6, fracción XXII y 186 de la Ley de Transparencia y Acceso a la Información Pública y Rendición de Cuentas de la Ciudad de México.
 </string>
+
+    <!-- Strings para la nueva pantalla de Historial de Actividad -->
+    <string name="admin_home_activity_history_button">Historial de Actividad</string>
+    <string name="activity_history_title">Historial de Actividad de Trabajadores</string>
+    <string name="no_activity_history">Aún no hay registros de actividad.</string>
+    <string name="activity_history_description_format">%1$s ha descargado %2$s</string>
 
 
 </resources>

@@ -32,6 +32,8 @@ public class Administrador extends AppCompatActivity {
     private final Fragment calendarFragment = new CalendarFragment();
     private final Fragment documentsFragment = new UploadDocumentsFragment();
     private final Fragment eventListFragment = new EventListFragment();
+    // Añadimos el nuevo fragmento de historial de actividad
+    private final Fragment workerActivityHistoryFragment = new WorkerActivityHistoryFragment();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,6 +70,8 @@ public class Administrador extends AppCompatActivity {
                 selectedFragment = eventListFragment;
             } else if (itemId == R.id.nav_documentos) {
                 selectedFragment = documentsFragment;
+            } else if (itemId == R.id.nav_worker_activity) { // Condición para el nuevo ítem
+                selectedFragment = workerActivityHistoryFragment;
             }
 
             if (selectedFragment != null) {
@@ -132,4 +136,3 @@ public class Administrador extends AppCompatActivity {
                 });
     }
 }
-
