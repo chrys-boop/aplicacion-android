@@ -1,10 +1,8 @@
 import admin from 'firebase-admin';
 
-// --- INICIALIZACIÓN DE FIREBASE ADMIN ---
+// Esta sección lee las variables de entorno de Netlify
 let firebaseApp;
-
 try {
-  // Solo inicializar si no hay apps ya corriendo
   if (!admin.apps.length) {
     console.log("Inicializando Firebase Admin SDK...");
     firebaseApp = admin.initializeApp({
@@ -16,48 +14,39 @@ try {
     });
     console.log("Firebase Admin SDK inicializado con éxito.");
   } else {
-    console.log("Firebase Admin SDK ya estaba inicializado.");
-    firebaseApp = admin.app(); // Obtener la app existente
+    firebaseApp = admin.app();
   }
 } catch (error) {
-  console.error("--- ERROR CRÍTICO DURANTE LA INICIALIZACIÓN DE FIREBASE ---");
-  console.error(error);
+  console.error("--- ERROR CRÍTICO DURANTE LA INICIALIZACIÓN DE FIREBASE ---", error);
 }
 
-// --- HANDLER PRINCIPAL DE LA FUNCIÓN ---
+// Handler principal
 export const handler = async (event) => {
+  // Comprueba si la inicialización falló
   if (!firebaseApp) {
-    console.error("La app de Firebase no está disponible. Revisa las credenciales (variables de entorno).");
+    console.error("La app de Firebase no está disponible. Revisa las credenciales en Netlify.");
     return { statusCode: 500, body: "Error de configuración del servidor." };
   }
 
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: 'Método no permitido' };
-  }
-
+  // Lógica de envío
   try {
     const { title, body, token, topic } = JSON.parse(event.body);
-    console.log("Datos recibidos:", { title, body, token, topic });
 
     if (token) {
-      console.log(`Enviando a TOKEN: ${token.substring(0, 20)}...`);
+      // Envío directo a un dispositivo
       await admin.messaging().send({ notification: { title, body }, token: token });
-      console.log("Éxito: Mensaje a token procesado.");
     } else if (topic) {
-      console.log(`Enviando a TOPIC: ${topic}`);
+      // Envío masivo a un tema
       await admin.messaging().send({ notification: { title, body }, topic: topic });
-      console.log("Éxito: Mensaje a topic procesado.");
-    } else {
-      return { statusCode: 400, body: "Se requiere un 'token' o un 'topic'." };
     }
 
     return { statusCode: 200, body: "Notificación procesada." };
 
   } catch (error) {
-    console.error('Error durante el envío:', error);
     return { statusCode: 500, body: error.message };
   }
 };
+
 
 
 
