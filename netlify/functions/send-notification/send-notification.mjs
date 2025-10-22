@@ -1,17 +1,26 @@
 import admin from 'firebase-admin';
 
-// Esta sección lee las variables de entorno de Netlify
 let firebaseApp;
+
 try {
+  // Solo inicializar si no se ha hecho antes
   if (!admin.apps.length) {
-    console.log("Inicializando Firebase Admin SDK...");
+    console.log("Intentando inicializar Firebase Admin SDK...");
+
+    // Lee la variable de entorno que contiene TODO el JSON
+    const serviceAccountString = process.env.FIREBASE_SERVICE_ACCOUNT;
+
+    if (!serviceAccountString) {
+      throw new Error("La variable de entorno FIREBASE_SERVICE_ACCOUNT no está definida.");
+    }
+
+    // Convierte el string a un objeto JSON
+    const serviceAccount = JSON.parse(serviceAccountString);
+
     firebaseApp = admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      }),
+      credential: admin.credential.cert(serviceAccount),
     });
+
     console.log("Firebase Admin SDK inicializado con éxito.");
   } else {
     firebaseApp = admin.app();
@@ -22,9 +31,8 @@ try {
 
 // Handler principal
 export const handler = async (event) => {
-  // Comprueba si la inicialización falló
   if (!firebaseApp) {
-    console.error("La app de Firebase no está disponible. Revisa las credenciales en Netlify.");
+    console.error("La app de Firebase no está disponible. Revisa la variable FIREBASE_SERVICE_ACCOUNT en Netlify.");
     return { statusCode: 500, body: "Error de configuración del servidor." };
   }
 
@@ -33,10 +41,10 @@ export const handler = async (event) => {
     const { title, body, token, topic } = JSON.parse(event.body);
 
     if (token) {
-      // Envío directo a un dispositivo
+      // Envío directo
       await admin.messaging().send({ notification: { title, body }, token: token });
     } else if (topic) {
-      // Envío masivo a un tema
+      // Envío a tema
       await admin.messaging().send({ notification: { title, body }, topic: topic });
     }
 
@@ -46,7 +54,3 @@ export const handler = async (event) => {
     return { statusCode: 500, body: error.message };
   }
 };
-
-
-
-
