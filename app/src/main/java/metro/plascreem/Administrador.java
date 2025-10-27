@@ -15,7 +15,6 @@ import android.util.Log;
 
 // Imports para el botón flotante y el fragmento de mensaje
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import metro.plascreem.SendMessageFragment;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.firebase.messaging.FirebaseMessaging;
@@ -32,7 +31,6 @@ public class Administrador extends AppCompatActivity {
     private final Fragment calendarFragment = new CalendarFragment();
     private final Fragment documentsFragment = new UploadDocumentsFragment();
     private final Fragment eventListFragment = new EventListFragment();
-    // Añadimos el nuevo fragmento de historial de actividad
     private final Fragment workerActivityHistoryFragment = new WorkerActivityHistoryFragment();
 
     @Override
@@ -40,24 +38,20 @@ public class Administrador extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_administrador);
 
-        // --- CONFIGURACIÓN DE LA TOOLBAR ---
         Toolbar toolbar = findViewById(R.id.toolbar_administrador);
         setSupportActionBar(toolbar);
 
-        // --- LÓGICA DEL BOTÓN FLOTANTE ---
         FloatingActionButton fab = findViewById(R.id.fab_send_message);
         fab.setOnClickListener(view -> {
-            // Carga el fragmento para enviar mensajes dirigidos
             replaceFragment(new SendMessageFragment(), true);
         });
 
-        // Suscribir al usuario al topic "all" para recibir notificaciones
         subscribeToNotifications();
         bottomNavigationView = findViewById(R.id.admin_bottom_navigation);
-
-        // Listener para la navegación
+// Configurar el listener para el BottomNavigationView
         bottomNavigationView.setOnItemSelectedListener(item -> {
             Fragment selectedFragment = null;
+            // Manejar la selección de elementos del menú
             int itemId = item.getItemId();
 
             if (itemId == R.id.nav_perfil) {
@@ -73,31 +67,31 @@ public class Administrador extends AppCompatActivity {
             }
 
             if (selectedFragment != null) {
-                replaceFragment(selectedFragment, false); // No añadir a la pila de retroceso
+                replaceFragment(selectedFragment, false);
                 return true;
             }
             return false;
         });
 
-        // Cargar el fragmento por defecto (Perfil)
         if (savedInstanceState == null) {
             bottomNavigationView.setSelectedItemId(R.id.nav_perfil);
         }
     }
-
-    // --- MÉTODO PARA CREAR EL MENÚ DE OPCIONES EN LA TOOLBAR ---
+// Crear el menú de opciones
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.main_options_menu, menu);
         return true;
     }
-
-    // --- MÉTODO PARA MANEJAR CLICS EN EL MENÚ DE OPCIONES ---
+// Manejar la selección de elementos del menú
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         int itemId = item.getItemId();
-        if (itemId == R.id.action_change_password) {
+        if (itemId == R.id.action_manage_users) {
+            replaceFragment(new UserListFragment(), true);
+            return true;
+        } else if (itemId == R.id.action_change_password) {
             replaceFragment(new ChangePasswordFragment(), true);
             return true;
         } else if (itemId == R.id.action_update_email) {
@@ -106,26 +100,23 @@ public class Administrador extends AppCompatActivity {
         } else if (itemId == R.id.action_settings) {
             replaceFragment(new SettingsFragment(), true);
             return true;
-        } else if (itemId == R.id.action_worker_history) { // NUEVA CONDICIÓN
+        } else if (itemId == R.id.action_worker_history) {
             replaceFragment(workerActivityHistoryFragment, true);
             return true;
         }
         return super.onOptionsItemSelected(item);
     }
-
+// Reemplazar el fragmento actual
     private void replaceFragment(Fragment fragment, boolean addToBackStack) {
         FragmentManager fragmentManager = getSupportFragmentManager();
         FragmentTransaction transaction = fragmentManager.beginTransaction();
         transaction.replace(R.id.admin_fragment_container, fragment);
         if (addToBackStack) {
-            transaction.addToBackStack(null); // Permite volver al fragmento anterior
+            transaction.addToBackStack(null);
         }
         transaction.commit();
     }
-
-    /**
-     * Suscribe al usuario al topic "all" para recibir notificaciones push
-     */
+// Suscribir al topic "all"
     private void subscribeToNotifications() {
         FirebaseMessaging.getInstance().subscribeToTopic("all")
                 .addOnCompleteListener(task -> {
@@ -137,3 +128,4 @@ public class Administrador extends AppCompatActivity {
                 });
     }
 }
+

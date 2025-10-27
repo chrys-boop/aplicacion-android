@@ -112,4 +112,13 @@ Lo anterior se fundamenta en los artículos 6, apartado A, fracción II de la Co
     <string name="activity_history_description_format">%1$s ha descargado %2$s</string>
 
 
+    <!-- Array de roles para el filtro de la lista de usuarios -->
+    <string-array name="user_roles_for_filter">
+        <item>Todos</item>
+        <item>Administrador</item>
+        <item>Personal Administrativo</item>
+        <item>Enlace</item>
+        <item>Titular</item>
+        <item>Trabajador</item>
+    </string-array>
 </resources>

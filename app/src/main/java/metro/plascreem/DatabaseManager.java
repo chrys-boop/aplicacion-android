@@ -44,7 +44,7 @@ public class DatabaseManager {
     public DatabaseManager(Context context) {
         this.context = context.getApplicationContext();
         mAuth = FirebaseAuth.getInstance();
-        mDatabase = FirebaseDatabase.getInstance("https://capacitacion-material-default-rtdb.firebaseio.com/").getReference();
+        mDatabase = FirebaseDatabase.getInstance().getReference();
         mStorageRef = FirebaseStorage.getInstance().getReference();
         this.requestQueue = Volley.newRequestQueue(this.context);
     }
@@ -180,6 +180,27 @@ public class DatabaseManager {
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
                 listener.onCancelled(error.getMessage());
+            }
+        });
+    }
+    // --- NUEVO MÉTODO PARA OBTENER TODOS LOS USUARIOS (con DataCallback) ---
+    public void getAllUsers(final DataCallback<List<User>> callback) {
+        mDatabase.child("users").addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                List<User> userList = new ArrayList<>();
+                for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
+                    User user = snapshot.getValue(User.class);
+                    if (user != null) {
+                        userList.add(user);
+                    }
+                }
+                callback.onDataReceived(userList);
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+                callback.onDataCancelled(databaseError.getMessage());
             }
         });
     }

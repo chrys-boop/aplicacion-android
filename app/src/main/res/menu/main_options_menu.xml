@@ -5,6 +5,10 @@
         android:id="@+id/action_worker_history"
         android:title="Historial de Actividad"
         app:showAsAction="never" />
+    <item
+        android:id="@+id/action_manage_users"
+        android:title="Gestionar Usuarios"
+        app:showAsAction="never" />
 
     <item
         android:id="@+id/action_change_password"

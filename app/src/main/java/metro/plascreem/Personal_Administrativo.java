@@ -17,12 +17,11 @@ import android.util.Log;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.messaging.FirebaseMessaging;
-import metro.plascreem.SendMessageFragment; // <-- El fragmento correcto
 
 public class Personal_Administrativo extends AppCompatActivity {
 
     private static final String TAG ="PersonalAdmin";
-    private static final int FRAGMENT_CONTAINER_ID = R.id.admin_fragment_container;
+    // Se elimina la constante FRAGMENT_CONTAINER_ID
     private final Fragment workerActivityHistoryFragment = new WorkerActivityHistoryFragment();
 
     @Override
@@ -37,7 +36,7 @@ public class Personal_Administrativo extends AppCompatActivity {
         // --- LÓGICA DEL BOTÓN FLOTANTE ---
         FloatingActionButton fab = findViewById(R.id.fab_send_message);
         fab.setOnClickListener(view -> {
-            // Carga el fragmento para enviar mensajes dirigidos, como se especificó
+            // Carga el fragmento para enviar mensajes dirigidos
             replaceFragment(new SendMessageFragment(), true);
         });
 
@@ -80,7 +79,10 @@ public class Personal_Administrativo extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         int itemId = item.getItemId();
-        if (itemId == R.id.action_change_password) {
+        if (itemId == R.id.action_manage_users) {
+            replaceFragment(new UserListFragment(), true);
+            return true;
+        } else if (itemId == R.id.action_change_password) {
             replaceFragment(new ChangePasswordFragment(), true);
             return true;
         } else if (itemId == R.id.action_update_email) {
@@ -98,7 +100,8 @@ public class Personal_Administrativo extends AppCompatActivity {
 
     private boolean loadFragment(Fragment fragment, boolean addToBackStack) {
         FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
-        transaction.replace(FRAGMENT_CONTAINER_ID, fragment);
+        // Se usa el ID del recurso directamente
+        transaction.replace(R.id.admin_fragment_container, fragment);
         if (addToBackStack) {
             transaction.addToBackStack(null);
         } else {
@@ -111,7 +114,8 @@ public class Personal_Administrativo extends AppCompatActivity {
     // --- MÉTODO AUXILIAR PARA LOS FRAGMENTOS DEL MENÚ DE OPCIONES ---
     private void replaceFragment(Fragment fragment, boolean addToBackStack) {
         FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
-        transaction.replace(FRAGMENT_CONTAINER_ID, fragment);
+        // Se usa el ID del recurso directamente
+        transaction.replace(R.id.admin_fragment_container, fragment);
         if (addToBackStack) {
             transaction.addToBackStack(null);
         }
@@ -129,4 +133,3 @@ public class Personal_Administrativo extends AppCompatActivity {
                 });
     }
 }
-
