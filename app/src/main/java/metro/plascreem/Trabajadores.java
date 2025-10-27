@@ -126,7 +126,7 @@ public class Trabajadores extends AppCompatActivity {
     // --- MÉTODO AUXILIAR PARA LOS FRAGMENTOS DEL MENÚ ---
     private void replaceFragment(Fragment fragment, boolean addToBackStack) {
         FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
-        transaction.replace(binding.trabajadoresContainer.getId(), fragment); // Reemplaza el contenedor raíz
+        transaction.replace(binding.mainFragmentContainer.getId(), fragment); // <<--- CORREGIDO
         if (addToBackStack) {
             transaction.addToBackStack(null);
         }

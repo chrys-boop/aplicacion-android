@@ -56,10 +56,12 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
 
-                <Spinner
+                <AutoCompleteTextView
                     android:id="@+id/spinner_user_role"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
+                    android:layout_height="wrap_content"
+                    android:text="Seleccionar rol destinatario"
+                    android:inputType="none" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <!-- Selector de Usuario -->
@@ -78,10 +80,13 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
 
-                <Spinner
+                <AutoCompleteTextView
                     android:id="@+id/spinner_select_user"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
+                    android:layout_height="wrap_content"
+                    android:text="seleccionar usuario"
+                    android:textColor="@color/black"
+                    android:inputType="none" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <!-- Campo de Mensaje -->

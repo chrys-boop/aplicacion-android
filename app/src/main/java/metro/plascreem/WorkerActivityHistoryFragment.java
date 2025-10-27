@@ -59,7 +59,8 @@ public class WorkerActivityHistoryFragment extends Fragment {
         tvNoHistory.setVisibility(View.GONE);
         rvActivityHistory.setVisibility(View.GONE);
 
-        DatabaseReference historyRef = FirebaseDatabase.getInstance().getReference("descargas_archivos");
+        // CORRECCIÓN: Apuntar a la ruta correcta en la base de datos
+        DatabaseReference historyRef = FirebaseDatabase.getInstance().getReference("file_download_history");
 
         historyRef.orderByChild("timestamp").addValueEventListener(new ValueEventListener() {
             @Override
@@ -92,4 +93,5 @@ public class WorkerActivityHistoryFragment extends Fragment {
         });
     }
 }
+
 

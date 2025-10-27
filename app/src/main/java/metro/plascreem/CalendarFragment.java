@@ -37,11 +37,9 @@ public class CalendarFragment extends Fragment
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         binding = FragmentCalendarBinding.inflate(inflater, container, false);
-        // --- CORRECCIÓN --- Se usa getContext() en un Fragment.
         databaseManager = new DatabaseManager(getContext());
         return binding.getRoot();
     }
-
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
@@ -49,68 +47,108 @@ public class CalendarFragment extends Fragment
         eventosAdapter = new EventosAdapter(eventosDelDia, this);
         binding.rvEventosDia.setLayoutManager(new LinearLayoutManager(getContext()));
         binding.rvEventosDia.setAdapter(eventosAdapter);
-
         binding.rvEventosDia.setNestedScrollingEnabled(false);
 
+        // 🔹 Ocultamos el FAB por defecto hasta saber el rol
+        binding.fabAddEvento.setVisibility(View.GONE);
+
+        // Escucha de selección de fechas
         binding.calendarView.setOnDateChangeListener((view1, year, month, dayOfMonth) -> {
             String selectedDate = String.format("%d-%02d-%02d", year, month + 1, dayOfMonth);
             binding.tvEventosHeader.setText("Eventos para el: " + dayOfMonth + "/" + (month + 1) + "/" + year);
             loadEventsForDate(selectedDate);
         });
 
-        // Carga inicial de eventos
-        Calendar today = Calendar.getInstance();
-        String initialDate = String.format("%d-%02d-%02d", today.get(Calendar.YEAR), today.get(Calendar.MONTH) + 1, today.get(Calendar.DAY_OF_MONTH));
-        loadEventsForDate(initialDate);
+        // 🔹 Cargar el rol del usuario y luego los eventos
+        loadUserRoleAndInitialEvents();
 
-        // Configurar el botón flotante (FAB)
+        // Acción del FAB
         binding.fabAddEvento.setOnClickListener(v -> handleFabClick());
-
-        // Obtener el rol del usuario actual
-        loadUserRole();
     }
+
 
     @Override
     public void onEventoClicked(Evento evento) {
         showEventDetailsDialog(evento);
     }
 
-
-    private void loadUserRole() {
+    // --- CORREGIDO: Método único que asegura el orden correcto de las operaciones asíncronas ---
+    private void loadUserRoleAndInitialEvents() {
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (currentUser != null && isAdded()) {
             databaseManager.getUserDataMap(currentUser.getUid(), new DatabaseManager.UserDataMapListener() {
                 @Override
                 public void onDataReceived(Map<String, Object> userData) {
                     if (isAdded()) {
+                        // 1. Se obtiene el rol del usuario
                         userRole = (String) userData.get("userType");
+
+                        // 2. Se actualiza la visibilidad del botón inmediatamente
                         updateFabVisibility();
+
+                        // 3. SOLO DESPUÉS de saber el rol, se cargan los eventos iniciales
+                        Calendar today = Calendar.getInstance();
+                        String initialDate = String.format("%d-%02d-%02d", today.get(Calendar.YEAR), today.get(Calendar.MONTH) + 1, today.get(Calendar.DAY_OF_MONTH));
+                        binding.tvEventosHeader.setText("Eventos para el: " + today.get(Calendar.DAY_OF_MONTH) + "/" + (today.get(Calendar.MONTH) + 1) + "/" + today.get(Calendar.YEAR));
+                        loadEventsForDate(initialDate);
                     }
                 }
 
                 @Override
                 public void onDataCancelled(String message) {
                     if (isAdded()) {
-                        binding.fabAddEvento.setVisibility(View.GONE);
+                        // Si falla, se oculta el botón y se cargan los eventos
+                        userRole = null;
+                        updateFabVisibility();
+                        Toast.makeText(getContext(), "No se pudo verificar el rol de usuario.", Toast.LENGTH_SHORT).show();
+
+                        Calendar today = Calendar.getInstance();
+                        String initialDate = String.format("%d-%02d-%02d", today.get(Calendar.YEAR), today.get(Calendar.MONTH) + 1, today.get(Calendar.DAY_OF_MONTH));
+                        loadEventsForDate(initialDate);
                     }
                 }
             });
+        } else if (isAdded()) {
+            // Si no hay usuario, se oculta el botón y se cargan los eventos
+            userRole = null;
+            updateFabVisibility();
+            Calendar today = Calendar.getInstance();
+            String initialDate = String.format("%d-%02d-%02d", today.get(Calendar.YEAR), today.get(Calendar.MONTH) + 1, today.get(Calendar.DAY_OF_MONTH));
+            loadEventsForDate(initialDate);
         }
     }
 
     private void updateFabVisibility() {
-        if ("Administrador".equals(userRole) || "Personal_Administrativo".equals(userRole)) {
+        if (binding == null) return;
+
+        if (userRole == null) {
+            binding.fabAddEvento.setVisibility(View.GONE);
+            return;
+        }
+
+        // Normalizamos el texto (para evitar fallos por mayúsculas o espacios)
+        String normalizedRole = userRole.trim().toLowerCase();
+
+        if (normalizedRole.equals("administrador") ||
+                normalizedRole.equals("personal_administrativo") ||
+                normalizedRole.equals("personal administrativo")) {
+
             binding.fabAddEvento.setVisibility(View.VISIBLE);
         } else {
             binding.fabAddEvento.setVisibility(View.GONE);
         }
     }
 
+
+
     private int getFragmentContainerId() {
         if ("Administrador".equals(userRole)) {
             return R.id.admin_fragment_container;
+        } else if ("Personal_Administrativo".equals(userRole)) {
+            return R.id.fragment_container;
+        } else {
+            return R.id.fragment_container;
         }
-        return R.id.fragment_container;
     }
 
     private void handleFabClick() {
@@ -132,6 +170,7 @@ public class CalendarFragment extends Fragment
                 if (isAdded()) {
                     eventosAdapter.setEventos(events);
                     showEmptyState(events.isEmpty());
+                    updateFabVisibility(); // Se asegura de que el botón siga visible al cambiar de fecha
                 }
             }
 
@@ -149,20 +188,16 @@ public class CalendarFragment extends Fragment
         builder.setTitle(evento.getTitulo());
         builder.setMessage(evento.getDescripcion());
 
-        // Botón para ejecutar la acción principal del evento (si la tiene)
         if (!Evento.TIPO_SIMPLE.equals(evento.getTipoAccion())) {
             builder.setPositiveButton("Ir a Acción", (dialog, which) -> {
                 onActionClick(evento);
             });
         }
 
-        // Botón de cerrar
         builder.setNegativeButton("Cerrar", (dialog, which) -> dialog.dismiss());
 
-        // --- BOTÓN DE ELIMINAR (SOLO PARA ADMIN) ---
-        if ("Administrador".equals(userRole)) {
+        if ("Administrador".equals(userRole) || "Personal_Administrativo".equals(userRole)) {
             builder.setNeutralButton("Eliminar", (dialog, which) -> {
-                // Pedir confirmación antes de eliminar
                 new AlertDialog.Builder(getContext())
                         .setTitle("Confirmar Eliminación")
                         .setMessage("¿Estás seguro de que quieres eliminar este evento?")
@@ -183,7 +218,6 @@ public class CalendarFragment extends Fragment
             public void onSuccess() {
                 if(isAdded()) {
                     Toast.makeText(getContext(), "Evento eliminado con éxito", Toast.LENGTH_SHORT).show();
-                    // Recargar los eventos para la fecha actual para que desaparezca de la lista
                     loadEventsForDate(evento.getFecha());
                 }
             }
@@ -197,8 +231,8 @@ public class CalendarFragment extends Fragment
         });
     }
 
-
     private void showEmptyState(boolean isEmpty) {
+        if (binding == null) return;
         binding.emptyState.setVisibility(isEmpty ? View.VISIBLE : View.GONE);
         binding.rvEventosDia.setVisibility(isEmpty ? View.GONE : View.VISIBLE);
         eventosAdapter.notifyDataSetChanged();
@@ -228,7 +262,7 @@ public class CalendarFragment extends Fragment
 
         if (nextFragment != null) {
             getParentFragmentManager().beginTransaction()
-                    .replace(getFragmentContainerId(), nextFragment) // Usar el container ID correcto
+                    .replace(getFragmentContainerId(), nextFragment)
                     .addToBackStack(null)
                     .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
                     .commit();
@@ -241,3 +275,5 @@ public class CalendarFragment extends Fragment
         binding = null;
     }
 }
+
+

@@ -2,6 +2,11 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <item
+        android:id="@+id/action_worker_history"
+        android:title="Historial de Actividad"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/action_change_password"
         android:title="Modificar contraseña"
         app:showAsAction="never" />
@@ -11,9 +16,11 @@
         android:title="Actualizar correo electrónico"
         app:showAsAction="never" />
 
+
     <item
         android:id="@+id/action_settings"
         android:title="Configuración"
         app:showAsAction="never" />
+
 
 </menu>

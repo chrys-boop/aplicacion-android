@@ -21,10 +21,7 @@
         android:icon="@android:drawable/ic_menu_recent_history"
         android:title="Historial de Eventos" />
 
-    <item
-        android:id="@+id/nav_worker_activity"
-        android:icon="@android:drawable/ic_lock_lock"
-        android:title="historial de actividad" />
+
 
     <item
         android:id="@+id/nav_documentos"

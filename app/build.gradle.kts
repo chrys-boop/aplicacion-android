@@ -17,6 +17,10 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
+        vectorDrawables {
+            useSupportLibrary = true
+        }
+
         // 1. Definir la clave en una variable, incluyendo las comillas que necesita el String de Java.
         val fcmServerKey =
             "\"BCIGKBSueN26-106y122fTCtA85RQQ7_-Jmy1LsLhXiBPeAtS-tpu4gMq-tkAv67594iUeQN0rNEhpxtDR6mRUE\""

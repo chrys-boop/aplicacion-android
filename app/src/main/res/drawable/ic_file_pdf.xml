@@ -1,33 +1,21 @@
-<!-- drawable/ic_document_modern.xml -->
+<!-- drawable/ic_document_modern_dark.xml -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
 
-    <!-- Cuerpo principal del documento con degradado -->
+    <!-- Cuerpo principal del documento (grafito oscuro con leve profundidad) -->
     <path
-        android:pathData="M20,2H8c-1.1,0 -2,0.9 -2,2v12c0,1.1 0.9,2 2,2h12c1.1,0 2,-0.9 2,-2V4c0,-1.1 -0.9,-2 -2,-2zM12,14h-2v-4h2v4zM16,14h-2v-4h2v4zM12,8H8V4h12v4h-8z">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:type="linear"
-                android:startX="4"
-                android:startY="2"
-                android:endX="20"
-                android:endY="20">
-                <item android:offset="0" android:color="#42A5F5"/>  <!-- Azul cielo -->
-                <item android:offset="1" android:color="#00BCD4"/>  <!-- Turquesa brillante -->
-            </gradient>
-        </aapt:attr>
-    </path>
+        android:fillColor="#212121"
+        android:pathData="M20,2H8c-1.1,0 -2,0.9 -2,2v12c0,1.1 0.9,2 2,2h12c1.1,0 2,-0.9 2,-2V4c0,-1.1 -0.9,-2 -2,-2zM12,14h-2v-4h2v4zM16,14h-2v-4h2v4zM12,8H8V4h12v4h-8z" />
 
-    <!-- Detalle superior del documento (doblez o pestaña) -->
+    <!-- Detalle superior (doblez o pestaña con leve sombra) -->
     <path
-        android:fillColor="#20000000"
+        android:fillColor="#424242"
         android:pathData="M8,4h12v0.8c0,0.5 -0.4,1 -1,1H9c-0.6,0 -1,-0.5 -1,-1V4z" />
 
-    <!-- Borde de sombra inferior -->
+    <!-- Sombra inferior para dar sensación de relieve -->
     <path
         android:fillColor="#1A000000"
         android:pathData="M8,18h12v0.8c0,0.5 -0.4,1 -1,1H9c-0.6,0 -1,-0.5 -1,-1V18z" />

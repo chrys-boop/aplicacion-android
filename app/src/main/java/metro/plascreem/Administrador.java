@@ -70,8 +70,6 @@ public class Administrador extends AppCompatActivity {
                 selectedFragment = eventListFragment;
             } else if (itemId == R.id.nav_documentos) {
                 selectedFragment = documentsFragment;
-            } else if (itemId == R.id.nav_worker_activity) { // Condición para el nuevo ítem
-                selectedFragment = workerActivityHistoryFragment;
             }
 
             if (selectedFragment != null) {
@@ -100,13 +98,16 @@ public class Administrador extends AppCompatActivity {
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         int itemId = item.getItemId();
         if (itemId == R.id.action_change_password) {
-            replaceFragment(new ChangePasswordFragment(), true); // Añadir a la pila de retroceso
+            replaceFragment(new ChangePasswordFragment(), true);
             return true;
         } else if (itemId == R.id.action_update_email) {
-            replaceFragment(new UpdateEmailFragment(), true); // Añadir a la pila de retroceso
+            replaceFragment(new UpdateEmailFragment(), true);
             return true;
         } else if (itemId == R.id.action_settings) {
-            replaceFragment(new SettingsFragment(), true); // Añadir a la pila de retroceso
+            replaceFragment(new SettingsFragment(), true);
+            return true;
+        } else if (itemId == R.id.action_worker_history) { // NUEVA CONDICIÓN
+            replaceFragment(workerActivityHistoryFragment, true);
             return true;
         }
         return super.onOptionsItemSelected(item);

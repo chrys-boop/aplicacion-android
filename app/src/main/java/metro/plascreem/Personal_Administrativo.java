@@ -23,6 +23,7 @@ public class Personal_Administrativo extends AppCompatActivity {
 
     private static final String TAG ="PersonalAdmin";
     private static final int FRAGMENT_CONTAINER_ID = R.id.admin_fragment_container;
+    private final Fragment workerActivityHistoryFragment = new WorkerActivityHistoryFragment();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -88,6 +89,9 @@ public class Personal_Administrativo extends AppCompatActivity {
         } else if (itemId == R.id.action_settings) {
             replaceFragment(new SettingsFragment(), true);
             return true;
+        } else if (itemId == R.id.action_worker_history) { // NUEVA CONDICIÓN
+            replaceFragment(workerActivityHistoryFragment, true);
+            return true;
         }
         return super.onOptionsItemSelected(item);
     }
@@ -125,3 +129,4 @@ public class Personal_Administrativo extends AppCompatActivity {
                 });
     }
 }
+

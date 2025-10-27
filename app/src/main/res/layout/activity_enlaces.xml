@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?android:attr/colorBackground"
+    android:background="#b0b0b0"
     tools:context=".Enlaces">
 
     <androidx.appcompat.widget.Toolbar
@@ -38,7 +38,8 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:labelVisibilityMode="labeled"
-        app:itemIconTint="@null"
+        app:itemIconTint="@color/bottom_nav_item_color"
+        app:itemTextColor="@color/bottom_nav_item_color"
         app:menu="@menu/enlace_navigation_menu" />
 
     <!-- Botón Flotante para Enviar Mensaje -->

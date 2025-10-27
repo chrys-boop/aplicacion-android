@@ -7,10 +7,10 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ProgressBar;
-import android.widget.Spinner;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -35,7 +35,7 @@ public class SendMessageFragment extends Fragment {
 
     private static final String TAG = "SendMessageFragment";
 
-    private Spinner roleSpinner, userSpinner;
+    private AutoCompleteTextView roleSpinner, userSpinner;
     private EditText messageEditText;
     private Button sendMessageButton, sendAlertButton;
     private ProgressBar progressBar;
@@ -43,6 +43,7 @@ public class SendMessageFragment extends Fragment {
     private DatabaseManager dbManager;
     private List<User> userList = new ArrayList<>();
     private ArrayAdapter<User> userAdapter;
+    private User selectedUser; // Para guardar el usuario seleccionado
 
     @Nullable
     @Override
@@ -70,31 +71,27 @@ public class SendMessageFragment extends Fragment {
 
     private void setupRoleSpinner() {
         ArrayAdapter<CharSequence> roleAdapter = ArrayAdapter.createFromResource(getContext(),
-                R.array.user_roles, android.R.layout.simple_spinner_item);
-        roleAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                R.array.user_roles, android.R.layout.simple_dropdown_item_1line);
         roleSpinner.setAdapter(roleAdapter);
 
-        roleSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                if (position > 0) {
-                    setTargetedMessagingControlsEnabled(true);
-                    loadUsersByRole(parent.getItemAtPosition(position).toString());
-                } else {
-                    setTargetedMessagingControlsEnabled(false);
-                }
-            }
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {
+        roleSpinner.setOnItemClickListener((parent, view, position, id) -> {
+            if (position > 0) { // Asume que la posición 0 es el hint "Seleccionar Rol"
+                setTargetedMessagingControlsEnabled(true);
+                loadUsersByRole(parent.getItemAtPosition(position).toString());
+            } else {
                 setTargetedMessagingControlsEnabled(false);
             }
         });
     }
 
     private void setupUserSpinner() {
-        userAdapter = new ArrayAdapter<>(getContext(), android.R.layout.simple_spinner_item, userList);
-        userAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        userAdapter = new ArrayAdapter<>(getContext(), android.R.layout.simple_dropdown_item_1line, userList);
         userSpinner.setAdapter(userAdapter);
+
+        userSpinner.setOnItemClickListener((parent, view, position, id) -> {
+            // Guarda el objeto User seleccionado
+            selectedUser = (User) parent.getItemAtPosition(position);
+        });
     }
 
     private void setupButtons() {
@@ -104,18 +101,14 @@ public class SendMessageFragment extends Fragment {
     }
 
     private void handleSendMessage() {
-        if (userSpinner.getSelectedItemPosition() == 0 || !(userSpinner.getSelectedItem() instanceof User)) {
+        // Comprueba si el usuario seleccionado es válido
+        if (selectedUser == null || selectedUser.getUid() == null) {
             Toast.makeText(getContext(), "Por favor, selecciona un usuario específico.", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        User selectedUser = (User) userSpinner.getSelectedItem();
         String messageContent = messageEditText.getText().toString().trim();
 
-        if (selectedUser.getUid() == null) {
-            Toast.makeText(getContext(), "Selección de usuario inválida.", Toast.LENGTH_SHORT).show();
-            return;
-        }
         if (messageContent.isEmpty()) {
             Toast.makeText(getContext(), "El mensaje no puede estar vacío.", Toast.LENGTH_SHORT).show();
             return;
@@ -158,10 +151,14 @@ public class SendMessageFragment extends Fragment {
             @Override
             public void onDataReceived(List<User> data) {
                 userList.clear();
-                userList.add(new User("Seleccionar Usuario"));
+                userList.add(new User("Seleccionar Usuario")); // Placeholder
                 userList.addAll(data);
                 userAdapter.notifyDataSetChanged();
-                userSpinner.setSelection(0);
+
+                // Limpia la selección de usuario anterior
+                userSpinner.setText("", false);
+                selectedUser = null;
+
                 setLoading(false);
             }
             @Override
@@ -188,14 +185,12 @@ public class SendMessageFragment extends Fragment {
 
         JsonObjectRequest request = new JsonObjectRequest(Request.Method.POST, functionUrl, payload,
                 response -> {
-                    // ESTE ES EL TOAST DE ÉXITO
                     Toast.makeText(getContext(), "Notificación enviada.", Toast.LENGTH_SHORT).show();
                     messageEditText.setText("");
                     setLoading(false);
                     if (getActivity() != null) getParentFragmentManager().popBackStack();
                 },
                 error -> {
-                    // ESTE ES EL TOAST DE ERROR
                     Log.e(TAG, "Error al enviar la notificación push: " + error.toString());
                     Toast.makeText(getContext(), "Error al enviar.", Toast.LENGTH_SHORT).show();
                     setLoading(false);
@@ -219,7 +214,10 @@ public class SendMessageFragment extends Fragment {
             userList.clear();
             userList.add(new User("Seleccione un rol primero"));
             userAdapter.notifyDataSetChanged();
-            userSpinner.setSelection(0);
+
+            // Limpia el texto y la selección
+            userSpinner.setText("", false);
+            selectedUser = null;
         }
     }
 }

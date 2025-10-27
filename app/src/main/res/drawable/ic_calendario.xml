@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="?attr/colorOnSurface">
+
+    <!-- Outer rounded rectangle (calendario) -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="?attr/colorOnSurface"
+        android:strokeWidth="1.5"
+        android:pathData="M19,4h-1V3a1,1 0 0 0 -1,-1h-2a1,1 0 0 0 -1,1v1H10V3a1,1 0 0 0 -1,-1H7a1,1 0 0 0 -1,1v1H5c-1.1,0 -2,0.9 -2,2v13c0,1.1 0.9,2 2,2h14c1.1,0 2,-0.9 2,-2V6c0,-1.1 -0.9,-2 -2,-2z M19,20H5V8h14v12z" />
+
+    <!-- Top header fill -->
+    <path
+        android:fillColor="?attr/colorPrimary"
+        android:pathData="M5,8h14v2H5z"
+        android:fillAlpha="0.12" />
+
+    <!-- Binding rings / knobs -->
+    <path
+        android:fillColor="?attr/colorOnSurface"
+        android:pathData="M8,3h1v2H8z" />
+    <path
+        android:fillColor="?attr/colorOnSurface"
+        android:pathData="M15,3h1v2h-1z" />
+
+    <!-- Grid: 3x2 small squares (dates) -->
+    <!-- Row 1 -->
+    <path android:fillColor="?attr/colorOnSurface" android:fillAlpha="0.95"
+        android:pathData="M7,11h2v2H7z" />
+    <path android:fillColor="?attr/colorOnSurface" android:fillAlpha="0.95"
+        android:pathData="M11,11h2v2h-2z" />
+    <path android:fillColor="?attr/colorOnSurface" android:fillAlpha="0.95"
+        android:pathData="M15,11h2v2h-2z" />
+
+    <!-- Row 2 -->
+    <path android:fillColor="?attr/colorOnSurface" android:fillAlpha="0.95"
+        android:pathData="M7,15h2v2H7z" />
+    <path android:fillColor="?attr/colorOnSurface" android:fillAlpha="0.95"
+        android:pathData="M11,15h2v2h-2z" />
+
+    <!-- Highlight current day (as a rounded pill / emphasis) -->
+    <path
+        android:fillColor="?attr/colorSecondary"
+        android:pathData="M15,15h2v2h-2z"
+        android:fillAlpha="1" />
+
+</vector>
