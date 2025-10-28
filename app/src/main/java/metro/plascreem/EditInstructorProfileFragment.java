@@ -24,23 +24,22 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
-import metro.plascreem.databinding.FragmentEditWorkerProfileBinding;
+import metro.plascreem.databinding.FragmentEditInstructorProfileBinding;
 
-public class EditWorkerProfileFragment extends Fragment {
+public class EditInstructorProfileFragment extends Fragment {
 
-    private FragmentEditWorkerProfileBinding binding;
+    private FragmentEditInstructorProfileBinding binding;
     private DatabaseManager databaseManager;
     private ExcelManager excelManager;
     private FirebaseAuth mAuth;
 
-    // Pattern for DD/MM/AAAA format
     private static final Pattern DATE_PATTERN = Pattern.compile("^([0-9]{2})/([0-9]{2})/([0-9]{4})$");
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        binding = FragmentEditWorkerProfileBinding.inflate(inflater, container, false);
+        binding = FragmentEditInstructorProfileBinding.inflate(inflater, container, false);
         databaseManager = new DatabaseManager(getContext());
-        excelManager = new ExcelManager(getContext()); // Initialize ExcelManager
+        excelManager = new ExcelManager(getContext());
         mAuth = FirebaseAuth.getInstance();
 
         setupHourSpinners();
@@ -107,7 +106,6 @@ public class EditWorkerProfileFragment extends Fragment {
     }
 
     private void showConfirmationDialog() {
-        // Validations before showing dialog
         String nombre = binding.etNombre.getText().toString().toUpperCase().trim();
         String apellidoPaterno = binding.etApellidoPaterno.getText().toString().toUpperCase().trim();
         String expediente = binding.etExpediente.getText().toString().toUpperCase().trim();
@@ -161,10 +159,8 @@ public class EditWorkerProfileFragment extends Fragment {
         userProfile.put("horarioEntrada", horarioEntrada);
         userProfile.put("horarioSalida", horarioSalida);
 
-        // Save to Excel
         excelManager.saveUserData(userProfile);
 
-        // Save to Firebase
         databaseManager.updateWorkerProfile(userId, userProfile, new DatabaseManager.DataSaveListener() {
             @Override
             public void onSuccess() {

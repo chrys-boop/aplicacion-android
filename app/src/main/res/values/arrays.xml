@@ -5,5 +5,11 @@
         <item>Enlaces</item>
         <item>Personal Administrativo</item>
         <item>Trabajadores</item>
+        <item>Instructor</item>
+    </string-array>
+
+    <string-array name="titular_options">
+        <item>Titular</item>
+        <item>Suplente</item>
     </string-array>
 </resources>

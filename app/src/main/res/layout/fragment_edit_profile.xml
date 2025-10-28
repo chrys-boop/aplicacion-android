@@ -1,13 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="16dp"
-    android:background="?android:attr/colorBackground"
-    android:clickable="true"
-    android:focusable="true"
-    tools:context="metro.plascreem.EditProfileFragment">
+    tools:context=".EditProfileFragment">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -17,95 +15,155 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Ingresar / Actualizar Datos de Enlace"
-            android:textSize="22sp"
+            android:text="Editar Perfil de Enlace"
+            android:textSize="24sp"
             android:textStyle="bold"
-            android:textColor="#303F9F"
-            android:layout_marginBottom="20dp"/>
+            android:layout_marginBottom="24dp"/>
 
-        <!-- Nombre y Apellidos -->
-        <EditText
-            android:id="@+id/et_nombre"
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="Nombre(s)"
-            android:inputType="textPersonName|textCapWords"
-            android:layout_marginBottom="12dp"/>
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/et_nombre"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textAllCaps="true"/>
+        </com.google.android.material.textfield.TextInputLayout>
 
-        <EditText
-            android:id="@+id/et_apellido_paterno"
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="Apellido Paterno"
-            android:inputType="textPersonName|textCapWords"
-            android:layout_marginBottom="12dp"/>
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_marginTop="16dp">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/et_apellido_paterno"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textAllCaps="true"/>
+        </com.google.android.material.textfield.TextInputLayout>
 
-        <EditText
-            android:id="@+id/et_apellido_materno"
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="Apellido Materno"
-            android:inputType="textPersonName|textCapWords"
-            android:layout_marginBottom="20dp"/>
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_marginTop="16dp">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/et_apellido_materno"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textAllCaps="true"/>
+        </com.google.android.material.textfield.TextInputLayout>
 
-        <!-- Datos del Puesto/Organización -->
-        <EditText
-            android:id="@+id/et_expediente"
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="Número de Expediente"
-            android:inputType="text"
-            android:textColor="@android:color/black"
-            android:layout_marginBottom="12dp"/>
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_marginTop="16dp">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/et_expediente"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textAllCaps="true"/>
+        </com.google.android.material.textfield.TextInputLayout>
 
-        <EditText
-            android:id="@+id/et_taller"
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Taller"
-            android:inputType="textCapWords"
-            android:layout_marginBottom="12dp"/>
+            android:hint="Área"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_marginTop="16dp">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/et_area"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textAllCaps="true"/>
+        </com.google.android.material.textfield.TextInputLayout>
 
-        <EditText
-            android:id="@+id/et_enlace_origen"
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Enlace de Origen"
-            android:inputType="textCapWords"
-            android:layout_marginBottom="12dp"/>
+            android:hint="Cargo"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_marginTop="16dp">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/et_cargo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textAllCaps="true"/>
+        </com.google.android.material.textfield.TextInputLayout>
 
-        <EditText
-            android:id="@+id/et_area"
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Area"
-            android:inputType="textCapWords"
+            android:hint="Fecha de Ingreso (DD/MM/AAAA)"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_marginTop="16dp">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/et_fecha_ingreso"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="date"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Tipo de Titular"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="8dp"/>
+
+        <Spinner
+            android:id="@+id/spinner_titular_type"
+            android:layout_width="match_parent"
+            android:layout_height="48dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Horario de Labores"
+            android:textSize="16sp"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp"
+            android:textAllCaps="true"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Hora de Entrada"
+            android:textSize="14sp"
+            android:layout_marginBottom="4dp"/>
+
+        <Spinner
+            android:id="@+id/spinner_hora_entrada"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
             android:layout_marginBottom="12dp"/>
 
-        <EditText
-            android:id="@+id/et_titular"
-            android:layout_width="match_parent"
+        <TextView
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:hint="Titular o suplente"
-            android:inputType="textCapWords"
-            android:layout_marginBottom="12dp"/>
+            android:text="Hora de Salida"
+            android:textSize="14sp"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="4dp"/>
 
-
-        <EditText
-            android:id="@+id/et_horario"
+        <Spinner
+            android:id="@+id/spinner_hora_salida"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Horario"
-            android:inputType="text"
+            android:layout_height="48dp"
             android:layout_marginBottom="30dp"/>
 
-        <!-- Botón de Guardar -->
         <Button
             android:id="@+id/btn_guardar_perfil"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Guardar Información"
-            android:backgroundTint="#4CAF50"/>
+            android:text="Guardar Cambios"
+            android:layout_marginTop="32dp"/>
 
     </LinearLayout>
 </ScrollView>

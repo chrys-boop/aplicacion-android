@@ -18,6 +18,7 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.messaging.FirebaseMessaging;
 
 import java.util.Map;
+import java.util.Objects;
 
 import metro.plascreem.databinding.ActivityTrabajadoresBinding;
 
@@ -26,6 +27,7 @@ public class Trabajadores extends AppCompatActivity {
     private static final String TAG = "Trabajadores";
     private ActivityTrabajadoresBinding binding;
     private DatabaseManager databaseManager;
+    private ExcelManager excelManager;
     private FirebaseAuth mAuth;
 
     @Override
@@ -39,6 +41,7 @@ public class Trabajadores extends AppCompatActivity {
 
         mAuth = FirebaseAuth.getInstance();
         databaseManager = new DatabaseManager(getApplicationContext());
+        excelManager = new ExcelManager(getApplicationContext());
 
         if (savedInstanceState == null) {
             getSupportFragmentManager().beginTransaction()
@@ -93,16 +96,30 @@ public class Trabajadores extends AppCompatActivity {
             String userId = currentUser.getUid();
             databaseManager.getUserDataMap(userId, new DatabaseManager.UserDataMapListener() {
                 @Override
-                public void onDataReceived(Map<String, Object> userData) {
-                    if (userData != null) {
-                        binding.tvWorkerName.setText(String.valueOf(userData.getOrDefault("nombreCompleto", "NOMBRE NO DISPONIBLE")).toUpperCase());
-                        String expediente = String.valueOf(userData.getOrDefault("numeroExpediente", "N/A"));
-                        String categoria = String.valueOf(userData.getOrDefault("categoria", "N/A"));
-                        String fechaIngreso = String.valueOf(userData.getOrDefault("fechaIngreso", "N/A"));
-                        String horarioEntrada = String.valueOf(userData.getOrDefault("horarioEntrada", "N/A"));
-                        String horarioSalida = String.valueOf(userData.getOrDefault("horarioSalida", "N/A"));
+                public void onDataReceived(Map<String, Object> firebaseData) {
+                    if (firebaseData != null) {
+                        binding.tvWorkerName.setText(Objects.toString(firebaseData.get("nombreCompleto"), "NOMBRE NO DISPONIBLE").toUpperCase());
 
-                        String workerDetails = "EXPEDIENTE: " + expediente + "\n" +
+                        String expediente = Objects.toString(firebaseData.get("numeroExpediente"), "");
+                        Map<String, Object> excelData = excelManager.findUserByExpediente(expediente);
+
+                        Map<String, Object> dataToUse = (excelData != null) ? excelData : firebaseData;
+
+                        String categoria = Objects.toString(dataToUse.get("categoria"), "N/A");
+                        if (categoria.isEmpty()) categoria = "N/A";
+
+                        String fechaIngreso = Objects.toString(dataToUse.get("fechaIngreso"), "N/A");
+                        if (fechaIngreso.isEmpty()) fechaIngreso = "N/A";
+
+                        String horarioEntrada = Objects.toString(dataToUse.get("horarioEntrada"), "N/A");
+                        if (horarioEntrada.isEmpty()) horarioEntrada = "N/A";
+
+                        String horarioSalida = Objects.toString(dataToUse.get("horarioSalida"), "N/A");
+                        if (horarioSalida.isEmpty()) horarioSalida = "N/A";
+
+                        String displayExpediente = Objects.toString(firebaseData.get("numeroExpediente"), "N/A");
+
+                        String workerDetails = "EXPEDIENTE: " + displayExpediente + "\n" +
                                 "CATEGORÍA: " + categoria + "\n" +
                                 "FECHA DE INGRESO: " + fechaIngreso + "\n" +
                                 "HORARIO: " + horarioEntrada + " - " + horarioSalida;
@@ -142,4 +159,5 @@ public class Trabajadores extends AppCompatActivity {
                 });
     }
 }
+
 

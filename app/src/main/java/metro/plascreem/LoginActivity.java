@@ -159,7 +159,7 @@ public class LoginActivity extends AppCompatActivity {
 
                 Intent intent;
 
-                // LÓGICA ORIGINAL DEL SWITCH RESTAURADA
+                // LÓGICA ORIGINAL DEL SWITCH CON EL NUEVO CASO AÑADIDO
                 switch (userType) {
                     case "Administrador":
                         intent = new Intent(LoginActivity.this, Administrador.class);
@@ -175,6 +175,10 @@ public class LoginActivity extends AppCompatActivity {
                         break;
                     case "Trabajadores":
                         intent = new Intent(LoginActivity.this, Trabajadores.class);
+                        FirebaseMessaging.getInstance().unsubscribeFromTopic("admins").addOnCompleteListener(task -> Log.d(TAG, "Unsubscribed from 'admins' topic."));
+                        break;
+                    case "Instructor":
+                        intent = new Intent(LoginActivity.this, Instructores.class);
                         FirebaseMessaging.getInstance().unsubscribeFromTopic("admins").addOnCompleteListener(task -> Log.d(TAG, "Unsubscribed from 'admins' topic."));
                         break;
                     default:

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/navigation_profile"
+        android:icon="@drawable/ic_vector_person_24"
+        android:title="Perfil" />
+    <item
+        android:id="@+id/navigation_upload_docs"
+        android:icon="@drawable/ic_file_pdf"
+        android:title="Documentos" />
+    <item
+        android:id="@+id/navigation_upload_media"
+        android:icon="@drawable/ic_file_image"
+        android:title="Media" />
+    <item
+        android:id="@+id/navigation_calendar"
+        android:icon="@drawable/ic_calendario"
+        android:title="Calendario" />
+</menu>

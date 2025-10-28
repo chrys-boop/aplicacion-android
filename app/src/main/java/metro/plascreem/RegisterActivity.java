@@ -1,5 +1,6 @@
 package metro.plascreem;
 
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
@@ -47,7 +48,7 @@ public class RegisterActivity extends AppCompatActivity {
         spinnerRole.setAdapter(adapter);
 
         // Listener para el botón de registrar
-        btnRegister.setOnClickListener(v -> registerUser());
+        btnRegister.setOnClickListener(v -> showConfirmationDialog());
 
         // Listener para ir a la pantalla de login
         tvGoToLogin.setOnClickListener(v -> {
@@ -67,8 +68,7 @@ public class RegisterActivity extends AppCompatActivity {
         return matcher.matches();
     }
 
-
-    private void registerUser() {
+    private void showConfirmationDialog() {
         String email = etEmail.getText().toString().trim();
         String password = etPassword.getText().toString().trim();
         String fullName = etFullName.getText().toString().trim();
@@ -91,6 +91,15 @@ public class RegisterActivity extends AppCompatActivity {
             return;
         }
 
+        new AlertDialog.Builder(this)
+                .setTitle("Confirmar Registro")
+                .setMessage("¿Estás seguro de que todos los datos son correctos?")
+                .setPositiveButton("Registrar", (dialog, which) -> registerUser(email, password, fullName, expediente, role))
+                .setNegativeButton("Cancelar", null)
+                .show();
+    }
+
+    private void registerUser(String email, String password, String fullName, String expediente, String role) {
         databaseManager.registerUser(email, password, fullName, expediente, role, new DatabaseManager.AuthListener() {
             @Override
             public void onSuccess() {
