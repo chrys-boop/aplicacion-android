@@ -111,8 +111,6 @@ public class DatabaseManager {
                         userData.put("nombreCompleto", fullName);
                         userData.put("numeroExpediente", expediente);
                         userData.put("lastConnection", System.currentTimeMillis());
-                        userData.put("area", ""); // Inicializar campo
-                        userData.put("titular", ""); // Inicializar campo
 
                         mDatabase.child("users").child(userId).setValue(userData)
                                 .addOnCompleteListener(dbTask -> {
@@ -376,6 +374,13 @@ public class DatabaseManager {
         updatedData.put("titular", titular); // Añadido
 
         mDatabase.child("users").child(userId).updateChildren(updatedData)
+                .addOnSuccessListener(aVoid -> listener.onSuccess())
+                .addOnFailureListener(e -> listener.onFailure(e.getMessage()));
+    }
+
+    // --- NUEVO MÉTODO PARA EL PERFIL DEL TRABAJADOR ---
+    public void updateWorkerProfile(String userId, Map<String, Object> workerProfile, DataSaveListener listener) {
+        mDatabase.child("users").child(userId).updateChildren(workerProfile)
                 .addOnSuccessListener(aVoid -> listener.onSuccess())
                 .addOnFailureListener(e -> listener.onFailure(e.getMessage()));
     }

@@ -2,7 +2,6 @@ package metro.plascreem;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 
@@ -35,9 +34,7 @@ public class Trabajadores extends AppCompatActivity {
         binding = ActivityTrabajadoresBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        // --- CONFIGURACIÓN DE LA TOOLBAR ---
         setSupportActionBar(binding.toolbarTrabajadores);
-
         subscribeToNotifications();
 
         mAuth = FirebaseAuth.getInstance();
@@ -61,7 +58,6 @@ public class Trabajadores extends AppCompatActivity {
         });
     }
 
-    // --- MÉTODO PARA CREAR EL MENÚ DE OPCIONES ---
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
@@ -69,7 +65,6 @@ public class Trabajadores extends AppCompatActivity {
         return true;
     }
 
-    // --- MÉTODO PARA MANEJAR CLICS EN EL MENÚ DE OPCIONES ---
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         int itemId = item.getItemId();
@@ -100,14 +95,18 @@ public class Trabajadores extends AppCompatActivity {
                 @Override
                 public void onDataReceived(Map<String, Object> userData) {
                     if (userData != null) {
-                        binding.tvWorkerName.setText(String.valueOf(userData.getOrDefault("nombreCompleto", "Nombre no disponible")));
+                        binding.tvWorkerName.setText(String.valueOf(userData.getOrDefault("nombreCompleto", "NOMBRE NO DISPONIBLE")).toUpperCase());
                         String expediente = String.valueOf(userData.getOrDefault("numeroExpediente", "N/A"));
-                        String area = String.valueOf(userData.getOrDefault("area", "N/A"));
-                        String titular = String.valueOf(userData.getOrDefault("titular", "N/A"));
-                        String workerDetails = "Expediente: " + expediente + "\n" +
-                                "Área: " + area + "\n" +
-                                "Rol: " + titular;
-                        binding.tvWorkerExpediente.setText(workerDetails);
+                        String categoria = String.valueOf(userData.getOrDefault("categoria", "N/A"));
+                        String fechaIngreso = String.valueOf(userData.getOrDefault("fechaIngreso", "N/A"));
+                        String horarioEntrada = String.valueOf(userData.getOrDefault("horarioEntrada", "N/A"));
+                        String horarioSalida = String.valueOf(userData.getOrDefault("horarioSalida", "N/A"));
+
+                        String workerDetails = "EXPEDIENTE: " + expediente + "\n" +
+                                "CATEGORÍA: " + categoria + "\n" +
+                                "FECHA DE INGRESO: " + fechaIngreso + "\n" +
+                                "HORARIO: " + horarioEntrada + " - " + horarioSalida;
+                        binding.tvWorkerExpediente.setText(workerDetails.toUpperCase());
                     }
                 }
 
@@ -120,13 +119,12 @@ public class Trabajadores extends AppCompatActivity {
     }
 
     private void navigateToEditProfile() {
-        replaceFragment(new EditProfileFragment(), true);
+        replaceFragment(new EditWorkerProfileFragment(), true);
     }
 
-    // --- MÉTODO AUXILIAR PARA LOS FRAGMENTOS DEL MENÚ ---
     private void replaceFragment(Fragment fragment, boolean addToBackStack) {
         FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
-        transaction.replace(binding.mainFragmentContainer.getId(), fragment); // <<--- CORREGIDO
+        transaction.replace(binding.mainFragmentContainer.getId(), fragment);
         if (addToBackStack) {
             transaction.addToBackStack(null);
         }
@@ -144,3 +142,4 @@ public class Trabajadores extends AppCompatActivity {
                 });
     }
 }
+

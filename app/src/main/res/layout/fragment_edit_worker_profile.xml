@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp"
+    android:background="?android:attr/colorBackground"
+    android:clickable="true"
+    android:focusable="true"
+    tools:context="metro.plascreem.EditWorkerProfileFragment">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ACTUALIZAR DATOS DEL TRABAJADOR"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="#303F9F"
+            android:layout_marginBottom="20dp"
+            android:textAllCaps="true"/>
+
+        <EditText
+            android:id="@+id/et_nombre"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="NOMBRE(S)"
+            android:inputType="textPersonName|textCapWords"
+            android:layout_marginBottom="12dp"
+            android:textAllCaps="true"/>
+
+        <EditText
+            android:id="@+id/et_apellido_paterno"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="APELLIDO PATERNO"
+            android:inputType="textPersonName|textCapWords"
+            android:layout_marginBottom="12dp"
+            android:textAllCaps="true"/>
+
+        <EditText
+            android:id="@+id/et_apellido_materno"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="APELLIDO MATERNO"
+            android:inputType="textPersonName|textCapWords"
+            android:layout_marginBottom="20dp"
+            android:textAllCaps="true"/>
+
+        <EditText
+            android:id="@+id/et_expediente"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="NÚMERO DE EXPEDIENTE"
+            android:inputType="text"
+            android:textColor="@android:color/black"
+            android:layout_marginBottom="12dp"
+            android:textAllCaps="true"/>
+
+        <EditText
+            android:id="@+id/et_categoria"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="CATEGORIA"
+            android:inputType="textCapWords"
+            android:layout_marginBottom="12dp"
+            android:textAllCaps="true"/>
+
+        <EditText
+            android:id="@+id/et_fecha_ingreso"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="FECHA DE INGRESO"
+            android:inputType="date"
+            android:layout_marginBottom="4dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Formato: DD/MM/AAAA"
+            android:textSize="12sp"
+            android:layout_marginBottom="12dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="HORARIO DE LABORES"
+            android:textSize="16sp"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp"
+            android:textAllCaps="true"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="HORA DE ENTRADA"
+            android:textSize="14sp"
+            android:layout_marginBottom="4dp"
+            android:textAllCaps="true"/>
+
+        <Spinner
+            android:id="@+id/spinner_hora_entrada"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="HORA DE SALIDA"
+            android:textSize="14sp"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="4dp"
+            android:textAllCaps="true"/>
+
+        <Spinner
+            android:id="@+id/spinner_hora_salida"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="30dp"/>
+
+        <Button
+            android:id="@+id/btn_guardar_perfil"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="GUARDAR INFORMACIÓN"
+            android:backgroundTint="#4CAF50"/>
+
+    </LinearLayout>
+</ScrollView>

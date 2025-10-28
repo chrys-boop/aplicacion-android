@@ -124,6 +124,7 @@ public class CreateEventFragment extends Fragment {
         try {
             postData.put("title", "Nuevo Evento: " + title);
             postData.put("body", body.isEmpty() ? "Consulta los detalles en la app." : body);
+            postData.put("topic", "all"); // Especificar el topic
         } catch (JSONException e) {
             Log.e("NotificationError", "Error al crear el JSON", e);
         }
