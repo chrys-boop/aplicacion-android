@@ -17,6 +17,7 @@ public class User {
     private String taller;
     private String enlaceOrigen;
     private String horario;
+    private boolean policyAccepted; // Nuevo campo
 
     // Constructor vacío requerido para Firebase
     public User() {}
@@ -65,8 +66,12 @@ public class User {
     public String getHorario() { return horario; }
     public void setHorario(String horario) { this.horario = horario; }
 
+    public boolean isPolicyAccepted() { return policyAccepted; } // Nuevo Getter
+    public void setPolicyAccepted(boolean policyAccepted) { this.policyAccepted = policyAccepted; } // Nuevo Setter
+
     @Override
     public String toString() {
         return nombreCompleto != null ? nombreCompleto : "Usuario sin nombre";
     }
 }
+

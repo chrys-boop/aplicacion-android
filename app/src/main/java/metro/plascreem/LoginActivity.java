@@ -25,7 +25,7 @@ import java.util.Map;
 
 public class LoginActivity extends AppCompatActivity {
 
-    private static final String TAG ="LoginActivity";
+    private static final String TAG = "LoginActivity";
     private EditText etEmail, etPassword;
     private Button btnLogin;
     private TextView tvGoToRegister, tvForgotPassword;
@@ -46,6 +46,10 @@ public class LoginActivity extends AppCompatActivity {
         tvGoToRegister = findViewById(R.id.tv_go_to_register);
         tvForgotPassword = findViewById(R.id.tv_forgot_password);
 
+        if (getIntent().hasExtra("REGISTRATION_SUCCESS")) {
+            Toast.makeText(this, getIntent().getStringExtra("REGISTRATION_SUCCESS"), Toast.LENGTH_LONG).show();
+        }
+
         btnLogin.setOnClickListener(v -> {
             String email = etEmail.getText().toString().trim();
             String password = etPassword.getText().toString().trim();
@@ -55,13 +59,11 @@ public class LoginActivity extends AppCompatActivity {
                 return;
             }
 
-            // Paso 1: Iniciar sesión con Firebase Auth
             databaseManager.loginUser(email, password, new DatabaseManager.AuthListener() {
                 @Override
                 public void onSuccess() {
                     FirebaseUser user = mAuth.getCurrentUser();
                     if (user != null) {
-                        // Paso 2: Si el login es exitoso, actualizar el token y redirigir
                         loginSuccessSequence(user.getUid());
                     } else {
                         ToastUtils.showLongToast(LoginActivity.this, "Error: no se pudo obtener el usuario después del inicio de sesión.");
@@ -76,8 +78,7 @@ public class LoginActivity extends AppCompatActivity {
         });
 
         tvGoToRegister.setOnClickListener(v -> {
-            Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
-            startActivity(intent);
+            startActivity(new Intent(LoginActivity.this, RegisterActivity.class));
         });
 
         tvForgotPassword.setOnClickListener(v -> sendPasswordReset());
@@ -105,40 +106,27 @@ public class LoginActivity extends AppCompatActivity {
         super.onStart();
         FirebaseUser currentUser = mAuth.getCurrentUser();
         if (currentUser != null) {
-            // Si ya hay una sesión, es crucial refrescar el token y redirigir.
             loginSuccessSequence(currentUser.getUid());
         }
     }
 
     private void loginSuccessSequence(String userId) {
-        // Paso 2.1: Obtener el token de FCM más reciente del dispositivo
         FirebaseMessaging.getInstance().getToken().addOnCompleteListener(tokenTask -> {
-            if (tokenTask.isSuccessful() && tokenTask.getResult() != null) {
-                String fcmToken = tokenTask.getResult();
+            String fcmToken = (tokenTask.isSuccessful() && tokenTask.getResult() != null) ? tokenTask.getResult() : "";
 
-                // Paso 2.2: Guardar el token en la base de datos
-                databaseManager.updateUserFcmToken(userId, fcmToken, new DatabaseManager.DataSaveListener() {
-                    @Override
-                    public void onSuccess() {
-                        Log.d(TAG, "Token de FCM actualizado exitosamente para el usuario: " + userId);
-                        // Paso 3: Si el token se guarda, obtener datos y redirigir
-                        fetchUserDataAndRedirect(userId);
-                    }
+            databaseManager.updateUserFcmToken(userId, fcmToken, new DatabaseManager.DataSaveListener() {
+                @Override
+                public void onSuccess() {
+                    Log.d(TAG, "Token de FCM actualizado.");
+                    fetchUserDataAndRedirect(userId);
+                }
 
-                    @Override
-                    public void onFailure(String message) {
-                        Log.e(TAG, "Error al actualizar el token de FCM: " + message);
-                        ToastUtils.showShortToast(LoginActivity.this, "Advertencia: No se pudo registrar para notificaciones.");
-                        // AUN ASÍ REDIRIGIR para que el usuario pueda usar la app
-                        fetchUserDataAndRedirect(userId);
-                    }
-                });
-            } else {
-                Log.e(TAG, "No se pudo obtener el token de FCM.", tokenTask.getException());
-                ToastUtils.showShortToast(LoginActivity.this, "Advertencia: No se pudo obtener token para notificaciones.");
-                // AUN ASÍ REDIRIGIR para que el usuario pueda usar la app
-                fetchUserDataAndRedirect(userId);
-            }
+                @Override
+                public void onFailure(String message) {
+                    Log.e(TAG, "Error al actualizar token, aun así se procede: " + message);
+                    fetchUserDataAndRedirect(userId);
+                }
+            });
         });
     }
 
@@ -146,20 +134,46 @@ public class LoginActivity extends AppCompatActivity {
         databaseManager.getUserDataMap(userId, new DatabaseManager.UserDataMapListener() {
             @Override
             public void onDataReceived(Map<String, Object> userData) {
-                if (userData == null || !(userData.get("userType") instanceof String)) {
-                    ToastUtils.showLongToast(LoginActivity.this, "No se pudo determinar el rol del usuario.");
+                if (userData == null) {
+                    ToastUtils.showLongToast(LoginActivity.this, "No se pudieron obtener los datos del usuario.");
+                    mAuth.signOut();
                     return;
                 }
 
-                subscribeToNotifications(); // Llamada al método original
+                Object policyAcceptedObj = userData.get("policyAccepted");
+                boolean policyAccepted = policyAcceptedObj instanceof Boolean && (Boolean) policyAcceptedObj;
 
-                String userType = ((String) userData.get("userType")).trim();
+                if (!policyAccepted) {
+                    // **INICIO: CAMBIO ÚNICO Y SEGURO**
+                    // mAuth.signOut(); // <-- LÍNEA ELIMINADA: NO cerramos la sesión.
+
+                    ToastUtils.showLongToast(LoginActivity.this, "Debe aceptar la política de privacidad para continuar.");
+
+                    Intent intent = new Intent(LoginActivity.this, PrivacyAcceptanceActivity.class);
+                    // Pasamos el UID, que es la forma segura y autorizada de identificar al usuario.
+                    intent.putExtra("USER_ID", userId);
+
+                    startActivity(intent);
+                    finishAffinity();
+                    return;
+                    // **FIN: CAMBIO ÚNICO Y SEGURO**
+                }
+
+                Object userTypeObj = userData.get("userType");
+                if (!(userTypeObj instanceof String) || ((String) userTypeObj).trim().isEmpty()) {
+                    ToastUtils.showLongToast(LoginActivity.this, "No se pudo determinar el rol del usuario. Contacte a soporte.");
+                    mAuth.signOut();
+                    return;
+                }
+                String userType = ((String) userTypeObj).trim();
+
+                subscribeToNotifications(); // TU CÓDIGO INTACTO
+
                 String nombre = (String) userData.get("nombreCompleto");
                 String expediente = (String) userData.get("numeroExpediente");
 
                 Intent intent;
 
-                // LÓGICA ORIGINAL DEL SWITCH CON EL NUEVO CASO AÑADIDO
                 switch (userType) {
                     case "Administrador":
                         intent = new Intent(LoginActivity.this, Administrador.class);
@@ -183,10 +197,10 @@ public class LoginActivity extends AppCompatActivity {
                         break;
                     default:
                         Toast.makeText(LoginActivity.this, "Rol de usuario no reconocido: [" + userType + "]", Toast.LENGTH_LONG).show();
+                        mAuth.signOut();
                         return;
                 }
 
-                // LÓGICA ORIGINAL DE PUTEXTRA RESTAURADA
                 if (nombre != null) {
                     intent.putExtra("NOMBRE_COMPLETO", nombre);
                 }
@@ -202,11 +216,11 @@ public class LoginActivity extends AppCompatActivity {
             @Override
             public void onDataCancelled(String message) {
                 ToastUtils.showLongToast(LoginActivity.this, "Error al obtener datos de usuario: " + message);
+                mAuth.signOut();
             }
         });
     }
 
-    // MÉTODO ORIGINAL RESTAURADO
     private void subscribeToNotifications() {
         Log.d(TAG, "🔔 Iniciando suscripción a notificaciones...");
 
@@ -259,3 +273,4 @@ public class LoginActivity extends AppCompatActivity {
         }
     }
 }
+

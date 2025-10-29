@@ -9,20 +9,12 @@ import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.widget.Toast;
-
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-
-import java.util.Map;
 
 import metro.plascreem.databinding.ActivityInstructoresBinding;
 
 public class Instructores extends AppCompatActivity {
 
     private ActivityInstructoresBinding binding;
-    private DatabaseManager databaseManager;
-    private FirebaseAuth mAuth;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,16 +24,11 @@ public class Instructores extends AppCompatActivity {
 
         setSupportActionBar(binding.toolbarInstructores);
 
-        mAuth = FirebaseAuth.getInstance();
-        databaseManager = new DatabaseManager(this);
-
-        loadInstructorData();
-
         binding.bottomNavigationInstructores.setOnItemSelectedListener(item -> {
             Fragment selectedFragment = null;
             int itemId = item.getItemId();
             if (itemId == R.id.navigation_profile) {
-                selectedFragment = new EditInstructorProfileFragment();
+                selectedFragment = new InstructorProfileFragment();
             } else if (itemId == R.id.navigation_upload_docs) {
                 selectedFragment = new UploadDocumentsFragment();
             } else if (itemId == R.id.navigation_upload_media) {
@@ -51,7 +38,7 @@ public class Instructores extends AppCompatActivity {
             }
 
             if (selectedFragment != null) {
-                replaceFragment(selectedFragment, true, R.id.fragment_container_instructores);
+                replaceFragment(selectedFragment, false, R.id.fragment_container_instructores);
             }
             return true;
         });
@@ -59,12 +46,29 @@ public class Instructores extends AppCompatActivity {
         binding.fabSendMessageInstructores.setOnClickListener(v -> {
             replaceFragment(new SendMessageFragment(), true, R.id.fragment_container_instructores);
         });
+
+        if (savedInstanceState == null) {
+            binding.bottomNavigationInstructores.setSelectedItemId(R.id.navigation_profile);
+        }
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.main_options_menu, menu);
+
+        // --- CORRECCIÓN DEFINITIVA ---
+        // Ocultar los ítems que no son para el rol de Instructor
+        MenuItem workerHistoryItem = menu.findItem(R.id.action_worker_history);
+        if (workerHistoryItem != null) {
+            workerHistoryItem.setVisible(false);
+        }
+
+        MenuItem manageUsersItem = menu.findItem(R.id.action_manage_users);
+        if (manageUsersItem != null) {
+            manageUsersItem.setVisible(false);
+        }
+
         return true;
     }
 
@@ -84,33 +88,7 @@ public class Instructores extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        loadInstructorData();
-    }
-
-    private void loadInstructorData() {
-        FirebaseUser currentUser = mAuth.getCurrentUser();
-        if (currentUser != null) {
-            String userId = currentUser.getUid();
-            databaseManager.getUserDataMap(userId, new DatabaseManager.UserDataMapListener() {
-                @Override
-                public void onDataReceived(Map<String, Object> userData) {
-                    if (userData != null) {
-                        // Data will be used by the profile fragment, nothing to do here.
-                    }
-                }
-
-                @Override
-                public void onDataCancelled(String message) {
-                    Toast.makeText(Instructores.this, "Error al cargar datos: " + message, Toast.LENGTH_SHORT).show();
-                }
-            });
-        }
-    }
-
-    private void replaceFragment(Fragment fragment, boolean addToBackStack, int containerId) {
+    public void replaceFragment(Fragment fragment, boolean addToBackStack, int containerId) {
         FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
         transaction.replace(containerId, fragment);
         if (addToBackStack) {

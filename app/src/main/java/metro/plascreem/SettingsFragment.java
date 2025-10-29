@@ -16,6 +16,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentActivity;
 
 import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.firebase.messaging.FirebaseMessaging;
@@ -39,20 +40,42 @@ public class SettingsFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        settingsPrefs = getActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        settingsPrefs = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
 
         setupReminderSwitch(view);
         setupThemeSelector(view);
 
-        // Lógica para Contactar a Soporte
         view.findViewById(R.id.tv_contact_support).setOnClickListener(v -> contactSupport());
 
-        // Lógica para Política de Privacidad y Términos
+        // Lógica para Política de Privacidad, compatible con todos los roles.
         view.findViewById(R.id.tv_privacy_policy).setOnClickListener(v -> {
-            if (getActivity() instanceof Enlaces) {
-                ((Enlaces) getActivity()).replaceFragment(new PrivacyPolicyFragment(), true);
+            FragmentActivity activity = getActivity();
+            if (activity == null) return;
+
+            int containerId = -1;
+            // IDs verificados a partir del código fuente de cada Activity
+            if (activity instanceof Administrador) {
+                containerId = R.id.admin_fragment_container;
+            } else if (activity instanceof Enlaces) {
+                containerId = R.id.fragment_container;
+            } else if (activity instanceof Trabajadores) {
+                containerId = R.id.main_fragment_container;
+            } else if (activity instanceof Instructores) {
+                containerId = R.id.fragment_container_instructores;
+            } else if (activity instanceof Personal_Administrativo) {
+                containerId = R.id.admin_fragment_container; // Confirmado que usa el mismo que Administrador
+            }
+
+            if (containerId != -1) {
+                getParentFragmentManager().beginTransaction()
+                        .replace(containerId, new PrivacyPolicyFragment()) // Se usa el mismo Fragment para todos
+                        .addToBackStack(null)
+                        .commit();
+            } else {
+                Toast.makeText(getContext(), "Error: No se pudo determinar la pantalla actual.", Toast.LENGTH_SHORT).show();
             }
         });
+
         view.findViewById(R.id.tv_terms_conditions).setOnClickListener(v -> openUrl("https://www.plascreem.com/terminos-condiciones"));
     }
 
@@ -63,7 +86,7 @@ public class SettingsFragment extends Fragment {
     private void showThemeDialog() {
         String[] themes = {"Claro", "Oscuro", "Automático (del sistema)"};
 
-        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
         builder.setTitle("Seleccionar Tema");
         builder.setItems(themes, (dialog, which) -> {
             SharedPreferences.Editor editor = settingsPrefs.edit();
@@ -88,16 +111,14 @@ public class SettingsFragment extends Fragment {
 
     private void setupReminderSwitch(View view) {
         SwitchMaterial switchReminders = view.findViewById(R.id.switch_event_reminders);
-        // Por defecto, los recordatorios están activados
         boolean remindersEnabled = settingsPrefs.getBoolean(REMINDERS_KEY, true);
         switchReminders.setChecked(remindersEnabled);
 
         switchReminders.setOnCheckedChangeListener((buttonView, isChecked) -> {
             settingsPrefs.edit().putBoolean(REMINDERS_KEY, isChecked).apply();
-            String notificationTopic = "all"; // Corregido para coincidir con la función de Netlify
+            String notificationTopic = "all";
 
             if (isChecked) {
-                // Suscribirse al tema 'all' para recibir notificaciones generales
                 FirebaseMessaging.getInstance().subscribeToTopic(notificationTopic)
                         .addOnCompleteListener(task -> {
                             String msg = "Recordatorios activados";
@@ -108,7 +129,6 @@ public class SettingsFragment extends Fragment {
                             showToast(msg);
                         });
             } else {
-                // Cancelar suscripción al tema 'all'
                 FirebaseMessaging.getInstance().unsubscribeFromTopic(notificationTopic)
                         .addOnCompleteListener(task -> {
                             String msg = "Recordatorios desactivados";
@@ -127,7 +147,7 @@ public class SettingsFragment extends Fragment {
         intent.setData(Uri.parse("mailto:soporte@plascreem.com"));
         intent.putExtra(Intent.EXTRA_SUBJECT, "Soporte App Plas-Creem");
 
-        if (getActivity().getPackageManager() != null && intent.resolveActivity(getActivity().getPackageManager()) != null) {
+        if (requireActivity().getPackageManager() != null && intent.resolveActivity(requireActivity().getPackageManager()) != null) {
             startActivity(intent);
         } else {
             showToast("No se encontró una aplicación de correo.");
@@ -138,7 +158,7 @@ public class SettingsFragment extends Fragment {
         Intent intent = new Intent(Intent.ACTION_VIEW);
         intent.setData(Uri.parse(url));
 
-        if (getActivity().getPackageManager() != null && intent.resolveActivity(getActivity().getPackageManager()) != null) {
+        if (requireActivity().getPackageManager() != null && intent.resolveActivity(requireActivity().getPackageManager()) != null) {
             startActivity(intent);
         } else {
             showToast("No se encontró un navegador web.");
@@ -151,3 +171,5 @@ public class SettingsFragment extends Fragment {
         }
     }
 }
+
+

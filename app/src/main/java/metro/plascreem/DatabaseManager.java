@@ -18,6 +18,7 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
@@ -111,6 +112,7 @@ public class DatabaseManager {
                         userData.put("nombreCompleto", fullName);
                         userData.put("numeroExpediente", expediente);
                         userData.put("lastConnection", System.currentTimeMillis());
+                        userData.put("policyAccepted", false); // Nuevo campo inicializado en false
 
                         mDatabase.child("users").child(userId).setValue(userData)
                                 .addOnCompleteListener(dbTask -> {
@@ -122,6 +124,34 @@ public class DatabaseManager {
                         listener.onFailure(task.getException().getMessage());
                     }
                 });
+    }
+
+    // Nuevo método para marcar la aceptación de políticas
+    public void setUserPolicyAcceptance(String email, boolean accepted, AuthListener listener) {
+        Query userQuery = mDatabase.child("users").orderByChild("email").equalTo(email);
+        userQuery.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                if (dataSnapshot.exists()) {
+                    for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
+                        String userId = snapshot.getKey();
+                        if (userId != null) {
+                            mDatabase.child("users").child(userId).child("policyAccepted").setValue(accepted)
+                                    .addOnSuccessListener(aVoid -> listener.onSuccess())
+                                    .addOnFailureListener(e -> listener.onFailure(e.getMessage()));
+                            return; // Salir después de encontrar y actualizar al usuario
+                        }
+                    }
+                } else {
+                    listener.onFailure("Usuario no encontrado.");
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+                listener.onFailure(databaseError.getMessage());
+            }
+        });
     }
 
 
@@ -492,4 +522,16 @@ public class DatabaseManager {
 
         requestQueue.add(jsonObjectRequest);
     }
+    // Este método es seguro para que lo use el propio usuario logueado.
+    public void setUserPolicyAcceptanceByUid(String userId, boolean accepted, AuthListener listener) {
+        if (userId == null || userId.isEmpty()) {
+            listener.onFailure("ID de usuario inválido.");
+            return;
+        }
+        mDatabase.child("users").child(userId).child("policyAccepted").setValue(accepted)
+                .addOnSuccessListener(aVoid -> listener.onSuccess())
+                .addOnFailureListener(e -> listener.onFailure(e.getMessage()));
+    }
+
 }
+

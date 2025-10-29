@@ -104,10 +104,12 @@ public class RegisterActivity extends AppCompatActivity {
             @Override
             public void onSuccess() {
                 runOnUiThread(() -> {
-                    Toast.makeText(RegisterActivity.this, "Registro exitoso. Por favor inicie sesión.", Toast.LENGTH_LONG).show();
-                    // Redirigir al login después de un registro exitoso
-                    startActivity(new Intent(RegisterActivity.this, LoginActivity.class));
-                    finish();
+                    Toast.makeText(RegisterActivity.this, "Registro exitoso. Por favor, acepte la política de privacidad.", Toast.LENGTH_LONG).show();
+                    // Redirigir a la pantalla de aceptación de políticas, pasando el email del usuario
+                    Intent intent = new Intent(RegisterActivity.this, PrivacyAcceptanceActivity.class);
+                    intent.putExtra("USER_EMAIL", email);
+                    startActivity(intent);
+                    finish(); // Cierra la actividad de registro
                 });
             }
 
