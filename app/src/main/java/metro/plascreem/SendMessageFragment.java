@@ -247,3 +247,4 @@ public class SendMessageFragment extends Fragment {
     }
 }
 
+

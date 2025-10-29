@@ -28,13 +28,22 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         String body = "";
         String senderId = null;
 
+        // *** INICIO DE LA SOLUCIÓN ***
+        // Se prioriza el contenido de la notificación enviada por FCM.
+        if (remoteMessage.getNotification() != null) {
+            title = remoteMessage.getNotification().getTitle();
+            body = remoteMessage.getNotification().getBody();
+            Log.d(TAG, "Título de la notificación: " + title);
+            Log.d(TAG, "Cuerpo de la notificación: " + body);
+        }
+
+        // Se mantiene la lógica para datos adicionales, como el senderId para el chat.
         if (remoteMessage.getData().size() > 0) {
             Map<String, String> data = remoteMessage.getData();
             Log.d(TAG, "Message Data payload: " + data);
-            title = data.get("title");
-            body = data.get("body");
             senderId = data.get("senderId");
         }
+        // *** FIN DE LA SOLUCIÓN ***
 
         sendNotification(title, body, senderId);
     }
@@ -54,27 +63,21 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
     }
 
     private void sendNotification(String messageTitle, String messageBody, String senderId) {
-        // *** INICIO DE LA SOLUCIÓN DIRECTA Y DEFINITIVA ***
-        // El Intent ahora apunta DIRECTAMENTE a LoginActivity, eliminando intermediarios.
         Intent intent = new Intent(this, LoginActivity.class);
 
-        // Si es una notificación de chat, añadimos el senderId. LoginActivity ya sabe qué hacer con él.
         if (senderId != null && !senderId.isEmpty()) {
             intent.putExtra("senderId", senderId);
         }
 
-        // Estas flags aseguran que la app se comporte correctamente.
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        // *** FIN DE LA SOLUCIÓN DIRECTA Y DEFINITIVA ***
 
-        // Usamos un requestCode aleatorio para asegurar que cada PendingIntent es único.
         int requestCode = new Random().nextInt();
         PendingIntent pendingIntent = PendingIntent.getActivity(this, requestCode, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         String channelId = "fcm_default_channel";
         NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(this, channelId)
-                .setSmallIcon(R.drawable.ic_launcher_foreground) // Asegúrate de que este ícono existe
+                .setSmallIcon(R.drawable.ic_launcher_foreground)
                 .setContentTitle(messageTitle)
                 .setContentText(messageBody)
                 .setAutoCancel(true)
