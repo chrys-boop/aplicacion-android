@@ -41,6 +41,7 @@
         <activity android:name=".Trabajadores" />
         <activity android:name=".RegisterActivity" />
         <activity android:name=".Instructores"    />
+        <activity android:name=".ChatActivity" />
 
         <!-- INICIO: CORRECCIÓN DEL CRASH - REGISTRO DE LA NUEVA PANTALLA -->
         <activity android:name=".PrivacyAcceptanceActivity" />

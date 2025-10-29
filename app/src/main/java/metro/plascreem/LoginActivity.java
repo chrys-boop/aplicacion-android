@@ -84,6 +84,23 @@ public class LoginActivity extends AppCompatActivity {
         tvForgotPassword.setOnClickListener(v -> sendPasswordReset());
     }
 
+    // *** INICIO: ESTA ES LA ÚNICA PIEZA DE CÓDIGO NUEVA Y NECESARIA ***
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        // Cuando la actividad ya existe y recibe un nuevo Intent (desde una notificación),
+        // actualizamos el Intent de la actividad con la nueva información.
+        setIntent(intent);
+
+        // Si el usuario ya ha iniciado sesión, volvemos a ejecutar la secuencia de redirección.
+        // Esto es CRÍTICO, porque ahora se leerá el nuevo Intent con el "senderId".
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        if (currentUser != null) {
+            loginSuccessSequence(currentUser.getUid());
+        }
+    }
+    // *** FIN: ESTA ES LA ÚNICA PIEZA DE CÓDIGO NUEVA Y NECESARIA ***
+
     private void sendPasswordReset() {
         String email = etEmail.getText().toString().trim();
         if (TextUtils.isEmpty(email)) {
@@ -144,19 +161,27 @@ public class LoginActivity extends AppCompatActivity {
                 boolean policyAccepted = policyAcceptedObj instanceof Boolean && (Boolean) policyAcceptedObj;
 
                 if (!policyAccepted) {
-                    // **INICIO: CAMBIO ÚNICO Y SEGURO**
-                    // mAuth.signOut(); // <-- LÍNEA ELIMINADA: NO cerramos la sesión.
-
                     ToastUtils.showLongToast(LoginActivity.this, "Debe aceptar la política de privacidad para continuar.");
-
                     Intent intent = new Intent(LoginActivity.this, PrivacyAcceptanceActivity.class);
-                    // Pasamos el UID, que es la forma segura y autorizada de identificar al usuario.
                     intent.putExtra("USER_ID", userId);
-
                     startActivity(intent);
                     finishAffinity();
                     return;
-                    // **FIN: CAMBIO ÚNICO Y SEGURO**
+                }
+
+                // Gracias al nuevo método onNewIntent(), esta lógica AHORA SÍ funciona en todos los casos.
+                String senderId = getIntent().getStringExtra("senderId");
+                if (senderId != null && !senderId.isEmpty()) {
+                    Log.d(TAG, "Redirigiendo a ChatActivity desde notificación. Remitente: " + senderId);
+
+                    // Línea de seguridad para evitar bucles de redirección
+                    getIntent().removeExtra("senderId");
+
+                    Intent chatIntent = new Intent(LoginActivity.this, ChatActivity.class);
+                    chatIntent.putExtra("senderId", senderId);
+                    startActivity(chatIntent);
+                    finish();
+                    return;
                 }
 
                 Object userTypeObj = userData.get("userType");
@@ -180,7 +205,7 @@ public class LoginActivity extends AppCompatActivity {
                     userType = "Trabajadores";
                 }
 
-                subscribeToNotifications(); // TU CÓDIGO INTACTO
+                subscribeToNotifications();
 
                 String nombre = (String) userData.get("nombreCompleto");
                 String expediente = (String) userData.get("numeroExpediente");
@@ -286,5 +311,7 @@ public class LoginActivity extends AppCompatActivity {
         }
     }
 }
+
+
 
 

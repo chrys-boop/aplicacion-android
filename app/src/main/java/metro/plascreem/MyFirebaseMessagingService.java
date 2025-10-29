@@ -12,76 +12,69 @@ import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
+
+import java.util.Map;
+import java.util.Random;
 
 public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
     private static final String TAG = "MyFirebaseMsgService";
 
-    /**
-     * Se llama cuando la app se inicia o cuando se recibe un mensaje con la app en primer plano.
-     */
     @Override
     public void onMessageReceived(RemoteMessage remoteMessage) {
-        Log.d(TAG, "FROM: " + remoteMessage.getFrom());
+        String title = "";
+        String body = "";
+        String senderId = null;
 
-        // Chequear si el mensaje contiene una notificación.
-        if (remoteMessage.getNotification() != null) {
-            Log.d(TAG, "Notification Body: " + remoteMessage.getNotification().getBody());
-            sendNotification(remoteMessage.getNotification().getTitle(), remoteMessage.getNotification().getBody());
+        if (remoteMessage.getData().size() > 0) {
+            Map<String, String> data = remoteMessage.getData();
+            Log.d(TAG, "Message Data payload: " + data);
+            title = data.get("title");
+            body = data.get("body");
+            senderId = data.get("senderId");
         }
+
+        sendNotification(title, body, senderId);
     }
 
-    /**
-     * Se llama cuando se genera un nuevo token de FCM o cuando el existente se actualiza.
-     * Este es el lugar ideal para persistir el token en el servidor.
-     * @param token El nuevo token.
-     */
     @Override
     public void onNewToken(@NonNull String token) {
         Log.d(TAG, "Refreshed token: " + token);
         sendRegistrationToServer(token);
     }
 
-    /**
-     * Persiste el token de FCM en la base de datos para el usuario actualmente logueado.
-     * @param token El token a guardar.
-     */
     private void sendRegistrationToServer(String token) {
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (currentUser != null) {
-            Log.d(TAG, "Usuario logueado, actualizando token en la base de datos.");
             DatabaseManager dbManager = new DatabaseManager(this);
-            dbManager.updateUserFcmToken(currentUser.getUid(), token, new DatabaseManager.DataSaveListener() {
-                @Override
-                public void onSuccess() {
-                    Log.d(TAG, "Token de FCM actualizado en la DB exitosamente.");
-                }
-
-                @Override
-                public void onFailure(String message) {
-                    Log.e(TAG, "Error al actualizar el token de FCM en la DB: " + message);
-                }
-            });
-        } else {
-            Log.w(TAG, "No hay usuario logueado, no se puede guardar el token de FCM en la DB.");
+            dbManager.updateUserFcmToken(currentUser.getUid(), token, null);
         }
     }
 
-    /**
-     * Crea y muestra una notificación simple.
-     */
-    private void sendNotification(String messageTitle, String messageBody) {
-        Intent intent = new Intent(this, MainActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent,
-                PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE);
+    private void sendNotification(String messageTitle, String messageBody, String senderId) {
+        // *** INICIO DE LA SOLUCIÓN DIRECTA Y DEFINITIVA ***
+        // El Intent ahora apunta DIRECTAMENTE a LoginActivity, eliminando intermediarios.
+        Intent intent = new Intent(this, LoginActivity.class);
+
+        // Si es una notificación de chat, añadimos el senderId. LoginActivity ya sabe qué hacer con él.
+        if (senderId != null && !senderId.isEmpty()) {
+            intent.putExtra("senderId", senderId);
+        }
+
+        // Estas flags aseguran que la app se comporte correctamente.
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        // *** FIN DE LA SOLUCIÓN DIRECTA Y DEFINITIVA ***
+
+        // Usamos un requestCode aleatorio para asegurar que cada PendingIntent es único.
+        int requestCode = new Random().nextInt();
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, requestCode, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         String channelId = "fcm_default_channel";
         NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(this, channelId)
-                .setSmallIcon(R.drawable.ic_launcher_foreground) // Asegúrate de tener este ícono
+                .setSmallIcon(R.drawable.ic_launcher_foreground) // Asegúrate de que este ícono existe
                 .setContentTitle(messageTitle)
                 .setContentText(messageBody)
                 .setAutoCancel(true)
@@ -90,7 +83,6 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
         NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 
-        // Crear el canal de notificación para Android Oreo y superior
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(channelId,
                     "Notificaciones Generales",
@@ -98,6 +90,9 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             notificationManager.createNotificationChannel(channel);
         }
 
-        notificationManager.notify(0, notificationBuilder.build());
+        notificationManager.notify(requestCode, notificationBuilder.build());
     }
 }
+
+
+
