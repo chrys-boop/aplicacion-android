@@ -44,7 +44,7 @@ public class InstructorProfileFragment extends Fragment {
 
         btnEditarPerfil.setOnClickListener(v -> {
             getParentFragmentManager().beginTransaction()
-                    .replace(R.id.fragment_container_instructores, new EditInstructorProfileFragment()) // CORREGIDO
+                    .replace(R.id.fragment_container_instructores, new EditInstructorProfileFragment())
                     .addToBackStack(null)
                     .commit();
         });
@@ -80,10 +80,19 @@ public class InstructorProfileFragment extends Fragment {
                         String nombre = String.valueOf(userData.getOrDefault("nombreCompleto", "Nombre no disponible"));
                         String expediente = String.valueOf(userData.getOrDefault("numeroExpediente", "N/A"));
                         String categoria = String.valueOf(userData.getOrDefault("categoria", "N/A"));
+                        String fechaIngreso = String.valueOf(userData.getOrDefault("fechaIngreso", "N/A"));
+                        String rol = String.valueOf(userData.getOrDefault("userType", "N/A"));
+                        String horarioEntrada = String.valueOf(userData.getOrDefault("horarioEntrada", "N/A"));
+                        String horarioSalida = String.valueOf(userData.getOrDefault("horarioSalida", "N/A"));
 
                         tvInstructorName.setText(nombre);
+
                         String profileDetails = "Expediente: " + expediente + "\n" +
-                                "Categoría: " + categoria;
+                                "Categoría: " + categoria + "\n" +
+                                "Fecha de Ingreso: " + fechaIngreso + "\n" +
+                                "Rol: " + rol + "\n" +
+                                "Horario: " + horarioEntrada + " - " + horarioSalida;
+
                         tvDatosPerfil.setText(profileDetails);
                     }
                 }
@@ -98,3 +107,4 @@ public class InstructorProfileFragment extends Fragment {
         }
     }
 }
+

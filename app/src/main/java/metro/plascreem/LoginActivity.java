@@ -167,6 +167,19 @@ public class LoginActivity extends AppCompatActivity {
                 }
                 String userType = ((String) userTypeObj).trim();
 
+                // Normalizar el rol para que coincida con el switch
+                if (userType.equalsIgnoreCase("instructor")) {
+                    userType = "Instructor";
+                } else if (userType.equalsIgnoreCase("administrador")) {
+                    userType = "Administrador";
+                } else if (userType.equalsIgnoreCase("personal administrativo")) {
+                    userType = "Personal Administrativo";
+                } else if (userType.equalsIgnoreCase("enlaces")) {
+                    userType = "Enlaces";
+                } else if (userType.equalsIgnoreCase("trabajadores")) {
+                    userType = "Trabajadores";
+                }
+
                 subscribeToNotifications(); // TU CÓDIGO INTACTO
 
                 String nombre = (String) userData.get("nombreCompleto");
@@ -273,4 +286,5 @@ public class LoginActivity extends AppCompatActivity {
         }
     }
 }
+
 

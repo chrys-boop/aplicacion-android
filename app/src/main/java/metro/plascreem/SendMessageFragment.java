@@ -5,7 +5,6 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
@@ -18,10 +17,10 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.android.volley.Request;
-import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
@@ -30,6 +29,7 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class SendMessageFragment extends Fragment {
 
@@ -43,7 +43,7 @@ public class SendMessageFragment extends Fragment {
     private DatabaseManager dbManager;
     private List<User> userList = new ArrayList<>();
     private ArrayAdapter<User> userAdapter;
-    private User selectedUser; // Para guardar el usuario seleccionado
+    private User selectedUser;
 
     @Nullable
     @Override
@@ -75,7 +75,7 @@ public class SendMessageFragment extends Fragment {
         roleSpinner.setAdapter(roleAdapter);
 
         roleSpinner.setOnItemClickListener((parent, view, position, id) -> {
-            if (position > 0) { // Asume que la posición 0 es el hint "Seleccionar Rol"
+            if (position > 0) {
                 setTargetedMessagingControlsEnabled(true);
                 loadUsersByRole(parent.getItemAtPosition(position).toString());
             } else {
@@ -89,7 +89,6 @@ public class SendMessageFragment extends Fragment {
         userSpinner.setAdapter(userAdapter);
 
         userSpinner.setOnItemClickListener((parent, view, position, id) -> {
-            // Guarda el objeto User seleccionado
             selectedUser = (User) parent.getItemAtPosition(position);
         });
     }
@@ -101,14 +100,12 @@ public class SendMessageFragment extends Fragment {
     }
 
     private void handleSendMessage() {
-        // Comprueba si el usuario seleccionado es válido
         if (selectedUser == null || selectedUser.getUid() == null) {
             Toast.makeText(getContext(), "Por favor, selecciona un usuario específico.", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        String messageContent = messageEditText.getText().toString().trim();
-
+        final String messageContent = messageEditText.getText().toString().trim();
         if (messageContent.isEmpty()) {
             Toast.makeText(getContext(), "El mensaje no puede estar vacío.", Toast.LENGTH_SHORT).show();
             return;
@@ -120,19 +117,52 @@ public class SendMessageFragment extends Fragment {
 
         setLoading(true);
 
-        String currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser == null) {
+            setLoading(false);
+            return;
+        }
+        final String currentUserId = currentUser.getUid();
+
+        dbManager.getUserDataMap(currentUserId, new DatabaseManager.UserDataMapListener() {
+            @Override
+            public void onDataReceived(Map<String, Object> userData) {
+                String senderName = "Alguien";
+                if (userData != null && userData.get("nombreCompleto") != null) {
+                    senderName = (String) userData.get("nombreCompleto");
+                }
+                String notificationTitle = "Nuevo mensaje de: " + senderName;
+
+                saveMessageAndSendNotification(currentUserId, messageContent, notificationTitle);
+            }
+
+            @Override
+            public void onDataCancelled(String message) {
+                Log.e(TAG, "Error al obtener el nombre del remitente: " + message);
+                // Fallback a título genérico si no se puede obtener el nombre
+                saveMessageAndSendNotification(currentUserId, messageContent, "Nuevo Mensaje");
+            }
+        });
+    }
+
+    private void saveMessageAndSendNotification(String currentUserId, String messageContent, String notificationTitle) {
         DatabaseReference messagesRef = FirebaseDatabase.getInstance().getReference("direct_messages").child(selectedUser.getUid());
         String messageId = messagesRef.push().getKey();
         DirectMessage directMessage = new DirectMessage(messageId, currentUserId, selectedUser.getUid(), messageContent, "message", System.currentTimeMillis());
 
-        messagesRef.child(messageId).setValue(directMessage).addOnCompleteListener(task -> {
-            if (task.isSuccessful()) {
-                sendPushNotification("Nuevo Mensaje", messageContent, selectedUser.getFcmToken(), null);
-            } else {
-                Toast.makeText(getContext(), "Error al guardar el mensaje.", Toast.LENGTH_SHORT).show();
-                setLoading(false);
-            }
-        });
+        if (messageId != null) {
+            messagesRef.child(messageId).setValue(directMessage).addOnCompleteListener(task -> {
+                if (task.isSuccessful()) {
+                    sendPushNotification(notificationTitle, messageContent, selectedUser.getFcmToken(), null);
+                } else {
+                    Toast.makeText(getContext(), "Error al guardar el mensaje.", Toast.LENGTH_SHORT).show();
+                    setLoading(false);
+                }
+            });
+        } else {
+            Toast.makeText(getContext(), "Error al crear el ID del mensaje.", Toast.LENGTH_SHORT).show();
+            setLoading(false);
+        }
     }
 
     private void handleSendAlert() {
@@ -151,14 +181,11 @@ public class SendMessageFragment extends Fragment {
             @Override
             public void onDataReceived(List<User> data) {
                 userList.clear();
-                userList.add(new User("Seleccionar Usuario")); // Placeholder
+                userList.add(new User("Seleccionar Usuario"));
                 userList.addAll(data);
                 userAdapter.notifyDataSetChanged();
-
-                // Limpia la selección de usuario anterior
                 userSpinner.setText("", false);
                 selectedUser = null;
-
                 setLoading(false);
             }
             @Override
@@ -214,10 +241,9 @@ public class SendMessageFragment extends Fragment {
             userList.clear();
             userList.add(new User("Seleccione un rol primero"));
             userAdapter.notifyDataSetChanged();
-
-            // Limpia el texto y la selección
             userSpinner.setText("", false);
             selectedUser = null;
         }
     }
 }
+
