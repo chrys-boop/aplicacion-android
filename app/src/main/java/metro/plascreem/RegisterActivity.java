@@ -97,6 +97,8 @@ public class RegisterActivity extends AppCompatActivity {
                 .setPositiveButton("Registrar", (dialog, which) -> registerUser(email, password, fullName, expediente, role))
                 .setNegativeButton("Cancelar", null)
                 .show();
+
+
     }
 
     private void registerUser(String email, String password, String fullName, String expediente, String role) {

@@ -7,10 +7,10 @@
       </SelectionState>
       <SelectionState runConfigName="Splashcreem">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2025-10-29T18:50:11.353727300Z">
+        <DropdownSelection timestamp="2025-10-30T15:45:54.363362900Z">
           <Target type="DEFAULT_BOOT">
             <handle>
-              <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\chrys\.android\avd\Medium_Phone_API_32.avd" />
+              <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\chrys\.android\avd\New_Device_1_API_33.avd" />
             </handle>
           </Target>
         </DropdownSelection>

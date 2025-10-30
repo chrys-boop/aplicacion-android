@@ -60,6 +60,7 @@ public class LoginActivity extends AppCompatActivity {
         }
 
         btnLogin.setOnClickListener(v -> {
+            Toast.makeText(LoginActivity.this, "Botón de login presionado", Toast.LENGTH_SHORT).show();
             String email = etEmail.getText().toString().trim();
             String password = etPassword.getText().toString().trim();
 
@@ -71,16 +72,19 @@ public class LoginActivity extends AppCompatActivity {
             databaseManager.loginUser(email, password, new DatabaseManager.AuthListener() {
                 @Override
                 public void onSuccess() {
+                    Log.d(TAG, "databaseManager.loginUser onSuccess: Autenticación exitosa.");
                     FirebaseUser user = mAuth.getCurrentUser();
                     if (user != null) {
                         loginSuccessSequence(user.getUid());
                     } else {
-                        ToastUtils.showLongToast(LoginActivity.this, "Error: no se pudo obtener el usuario después del inicio de sesión.");
+                        Log.e(TAG, "onSuccess: mAuth.getCurrentUser() retornó null después de un inicio de sesión exitoso.");
+                        ToastUtils.showLongToast(LoginActivity.this, "Error crítico: no se pudo obtener el usuario después del inicio de sesión.");
                     }
                 }
 
                 @Override
                 public void onFailure(String message) {
+                    Log.e(TAG, "databaseManager.loginUser onFailure: " + message);
                     ToastUtils.showLongToast(LoginActivity.this, "Error en el inicio de sesión: " + message);
                 }
             });
@@ -170,6 +174,7 @@ public class LoginActivity extends AppCompatActivity {
             @Override
             public void onDataReceived(Map<String, Object> userData) {
                 if (userData == null) {
+                    Log.e(TAG, "fetchUserDataAndRedirect: No se pudieron obtener los datos del usuario desde la base de datos (userData es null).");
                     ToastUtils.showLongToast(LoginActivity.this, "No se pudieron obtener los datos del usuario.");
                     mAuth.signOut();
                     return;
@@ -179,6 +184,7 @@ public class LoginActivity extends AppCompatActivity {
                 boolean policyAccepted = policyAcceptedObj instanceof Boolean && (Boolean) policyAcceptedObj;
 
                 if (!policyAccepted) {
+                    Log.w(TAG, "fetchUserDataAndRedirect: El usuario no ha aceptado la política de privacidad. Redirigiendo a PrivacyAcceptanceActivity.");
                     ToastUtils.showLongToast(LoginActivity.this, "Debe aceptar la política de privacidad para continuar.");
                     Intent intent = new Intent(LoginActivity.this, PrivacyAcceptanceActivity.class);
                     intent.putExtra("USER_ID", userId);
@@ -204,11 +210,13 @@ public class LoginActivity extends AppCompatActivity {
 
                 Object userTypeObj = userData.get("userType");
                 if (!(userTypeObj instanceof String) || ((String) userTypeObj).trim().isEmpty()) {
+                    Log.e(TAG, "fetchUserDataAndRedirect: El rol del usuario ('userType') es nulo, vacío o no es un String. Valor: " + userTypeObj);
                     ToastUtils.showLongToast(LoginActivity.this, "No se pudo determinar el rol del usuario. Contacte a soporte.");
                     mAuth.signOut();
                     return;
                 }
                 String userType = ((String) userTypeObj).trim();
+                Log.d(TAG, "Rol de usuario obtenido: " + userType);
 
                 if (userType.equalsIgnoreCase("instructor")) userType = "Instructor";
                 else if (userType.equalsIgnoreCase("administrador")) userType = "Administrador";
@@ -247,12 +255,14 @@ public class LoginActivity extends AppCompatActivity {
                         FirebaseMessaging.getInstance().unsubscribeFromTopic("admins").addOnCompleteListener(task -> Log.d(TAG, "Unsubscribed from 'admins' topic."));
                         break;
                     default:
+                        Log.e(TAG, "fetchUserDataAndRedirect: Rol de usuario no reconocido: [" + userType + "]");
                         Toast.makeText(LoginActivity.this, "Rol de usuario no reconocido: [" + userType + "]", Toast.LENGTH_LONG).show();
                         mAuth.signOut();
                         return;
                 }
                 // *** FIN: CÓDIGO RESTAURADO ***
 
+                Log.d(TAG, "Redirigiendo al usuario a la actividad: " + intent.getComponent().getClassName());
                 if (nombre != null) intent.putExtra("NOMBRE_COMPLETO", nombre);
                 if (expediente != null) intent.putExtra("NUMERO_EXPEDIENTE", expediente);
 
@@ -263,6 +273,7 @@ public class LoginActivity extends AppCompatActivity {
 
             @Override
             public void onDataCancelled(String message) {
+                Log.e(TAG, "fetchUserDataAndRedirect onDataCancelled: " + message);
                 ToastUtils.showLongToast(LoginActivity.this, "Error al obtener datos de usuario: " + message);
                 mAuth.signOut();
             }
@@ -319,6 +330,7 @@ public class LoginActivity extends AppCompatActivity {
         }
     }
 }
+
 
 
 

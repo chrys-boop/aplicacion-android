@@ -1,4 +1,3 @@
-
 package metro.plascreem;
 
 import android.content.Context;
@@ -104,7 +103,6 @@ public class DatabaseManager {
         mAuth.createUserWithEmailAndPassword(email, password)
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
-                        listener.onSuccess();
                         String userId = mAuth.getCurrentUser().getUid();
                         Map<String, Object> userData = new HashMap<>();
                         userData.put("email", email);
@@ -116,7 +114,10 @@ public class DatabaseManager {
 
                         mDatabase.child("users").child(userId).setValue(userData)
                                 .addOnCompleteListener(dbTask -> {
-                                    if (!dbTask.isSuccessful()) {
+                                    if (dbTask.isSuccessful()) {
+                                        listener.onSuccess();
+                                    } else {
+                                        listener.onFailure(dbTask.getException().getMessage());
                                         Log.e(TAG, "Error al guardar datos de usuario.", dbTask.getException());
                                     }
                                 });
@@ -160,8 +161,15 @@ public class DatabaseManager {
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
                         String userId = mAuth.getCurrentUser().getUid();
-                        mDatabase.child("users").child(userId).child("lastConnection").setValue(System.currentTimeMillis());
-                        listener.onSuccess();
+                        mDatabase.child("users").child(userId).child("lastConnection").setValue(System.currentTimeMillis())
+                                .addOnCompleteListener(dbTask -> {
+                                    if (dbTask.isSuccessful()) {
+                                        listener.onSuccess();
+                                    } else {
+                                        Log.e(TAG, "Failed to update last connection time.", dbTask.getException());
+                                        listener.onSuccess();
+                                    }
+                                });
                     } else {
                         listener.onFailure(task.getException().getMessage());
                     }
@@ -534,4 +542,5 @@ public class DatabaseManager {
     }
 
 }
+
 
