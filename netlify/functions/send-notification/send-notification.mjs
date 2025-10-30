@@ -16,7 +16,6 @@ try {
 
 // Handler principal
 export const handler = async (event) => {
-  // Define los headers que se usarán en TODAS las respuestas.
   const headers = {
     'Content-Type': 'application/json'
   };
@@ -30,12 +29,31 @@ export const handler = async (event) => {
   }
 
   try {
-    const { title, body, token, topic } = JSON.parse(event.body);
+    // *** INICIO DE LA MODIFICACIÓN ***
+    // Se extrae el senderId del cuerpo del evento.
+    const { title, body, token, topic, senderId } = JSON.parse(event.body);
+
+    // Se crea un payload que incluye tanto la notificación visible como los datos adicionales.
+    const messagePayload = {
+      notification: {
+        title: title || 'Notificación',
+        body: body || 'Hay un nuevo mensaje.'
+      },
+      data: {
+        title: title || 'Notificación',
+        body: body || 'Hay un nuevo mensaje.'
+      }
+    };
+
+    // Se añade el senderId a los datos si existe. Esto es lo que usará la app para redirigir.
+    if (senderId) {
+      messagePayload.data.senderId = senderId;
+    }
 
     if (token) {
-      await admin.messaging().send({ notification: { title, body }, token: token });
+      messagePayload.token = token;
     } else if (topic) {
-      await admin.messaging().send({ notification: { title, body }, topic: topic });
+      messagePayload.topic = topic;
     } else {
       return {
         statusCode: 400,
@@ -44,7 +62,9 @@ export const handler = async (event) => {
       };
     }
 
-    // Responde con un JSON y el header correcto para indicar éxito.
+    await admin.messaging().send(messagePayload);
+    // *** FIN DE LA MODIFICACIÓN ***
+
     return {
       statusCode: 200,
       headers: headers,
@@ -52,6 +72,7 @@ export const handler = async (event) => {
     };
 
   } catch (error) {
+    console.error("Error al procesar la notificación:", error);
     return {
       statusCode: 500,
       headers: headers,

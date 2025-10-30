@@ -32,6 +32,10 @@ public class LoginActivity extends AppCompatActivity {
     private DatabaseManager databaseManager;
     private FirebaseAuth mAuth;
 
+    // *** INICIO: SOLUCIÓN DE NOTIFICACIONES ***
+    private String senderIdFromNotification;
+    // *** FIN: SOLUCIÓN DE NOTIFICACIONES ***
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -39,6 +43,11 @@ public class LoginActivity extends AppCompatActivity {
 
         mAuth = FirebaseAuth.getInstance();
         databaseManager = new DatabaseManager(this);
+
+        // *** INICIO: SOLUCIÓN DE NOTIFICACIONES ***
+        // Procesa el intent inicial para capturar el senderId si la app se abre desde una notificación.
+        handleIntent(getIntent());
+        // *** FIN: SOLUCIÓN DE NOTIFICACIONES ***
 
         etEmail = findViewById(R.id.et_username);
         etPassword = findViewById(R.id.et_password);
@@ -84,22 +93,31 @@ public class LoginActivity extends AppCompatActivity {
         tvForgotPassword.setOnClickListener(v -> sendPasswordReset());
     }
 
-    // *** INICIO: ESTA ES LA ÚNICA PIEZA DE CÓDIGO NUEVA Y NECESARIA ***
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
-        // Cuando la actividad ya existe y recibe un nuevo Intent (desde una notificación),
-        // actualizamos el Intent de la actividad con la nueva información.
         setIntent(intent);
 
-        // Si el usuario ya ha iniciado sesión, volvemos a ejecutar la secuencia de redirección.
-        // Esto es CRÍTICO, porque ahora se leerá el nuevo Intent con el "senderId".
+        // *** INICIO: SOLUCIÓN DE NOTIFICACIONES ***
+        // Procesa el intent si la app ya estaba abierta y recibe una notificación.
+        handleIntent(intent);
+        // *** FIN: SOLUCIÓN DE NOTIFICACIONES ***
+
         FirebaseUser currentUser = mAuth.getCurrentUser();
         if (currentUser != null) {
             loginSuccessSequence(currentUser.getUid());
         }
     }
-    // *** FIN: ESTA ES LA ÚNICA PIEZA DE CÓDIGO NUEVA Y NECESARIA ***
+
+    // *** INICIO: SOLUCIÓN DE NOTIFICACIONES ***
+    // Método centralizado para extraer y guardar de forma segura el senderId del Intent.
+    private void handleIntent(Intent intent) {
+        if (intent != null && intent.hasExtra("senderId")) {
+            this.senderIdFromNotification = intent.getStringExtra("senderId");
+            intent.removeExtra("senderId"); // Se limpia para evitar reprocesamiento.
+        }
+    }
+    // *** FIN: SOLUCIÓN DE NOTIFICACIONES ***
 
     private void sendPasswordReset() {
         String email = etEmail.getText().toString().trim();
@@ -169,20 +187,20 @@ public class LoginActivity extends AppCompatActivity {
                     return;
                 }
 
-                // Gracias al nuevo método onNewIntent(), esta lógica AHORA SÍ funciona en todos los casos.
-                String senderId = getIntent().getStringExtra("senderId");
-                if (senderId != null && !senderId.isEmpty()) {
-                    Log.d(TAG, "Redirigiendo a ChatActivity desde notificación. Remitente: " + senderId);
-
-                    // Línea de seguridad para evitar bucles de redirección
-                    getIntent().removeExtra("senderId");
+                // *** INICIO: SOLUCIÓN DE NOTIFICACIONES ***
+                // Si se guardó un senderId, se redirige a ChatActivity y se detiene el flujo.
+                if (senderIdFromNotification != null && !senderIdFromNotification.isEmpty()) {
+                    Log.d(TAG, "Redirigiendo a ChatActivity desde notificación. Remitente: " + senderIdFromNotification);
 
                     Intent chatIntent = new Intent(LoginActivity.this, ChatActivity.class);
-                    chatIntent.putExtra("senderId", senderId);
+                    chatIntent.putExtra("senderId", senderIdFromNotification);
+                    senderIdFromNotification = null; // Se limpia la variable.
+
                     startActivity(chatIntent);
                     finish();
-                    return;
+                    return; // IMPORTANTE: Detiene la ejecución para no redirigir al perfil.
                 }
+                // *** FIN: SOLUCIÓN DE NOTIFICACIONES ***
 
                 Object userTypeObj = userData.get("userType");
                 if (!(userTypeObj instanceof String) || ((String) userTypeObj).trim().isEmpty()) {
@@ -192,18 +210,11 @@ public class LoginActivity extends AppCompatActivity {
                 }
                 String userType = ((String) userTypeObj).trim();
 
-                // Normalizar el rol para que coincida con el switch
-                if (userType.equalsIgnoreCase("instructor")) {
-                    userType = "Instructor";
-                } else if (userType.equalsIgnoreCase("administrador")) {
-                    userType = "Administrador";
-                } else if (userType.equalsIgnoreCase("personal administrativo")) {
-                    userType = "Personal Administrativo";
-                } else if (userType.equalsIgnoreCase("enlaces")) {
-                    userType = "Enlaces";
-                } else if (userType.equalsIgnoreCase("trabajadores")) {
-                    userType = "Trabajadores";
-                }
+                if (userType.equalsIgnoreCase("instructor")) userType = "Instructor";
+                else if (userType.equalsIgnoreCase("administrador")) userType = "Administrador";
+                else if (userType.equalsIgnoreCase("personal administrativo")) userType = "Personal Administrativo";
+                else if (userType.equalsIgnoreCase("enlaces")) userType = "Enlaces";
+                else if (userType.equalsIgnoreCase("trabajadores")) userType = "Trabajadores";
 
                 subscribeToNotifications();
 
@@ -212,6 +223,8 @@ public class LoginActivity extends AppCompatActivity {
 
                 Intent intent;
 
+                // *** INICIO: CÓDIGO RESTAURADO ***
+                // Se restaura la lógica de suscripción a tópicos específicos por rol.
                 switch (userType) {
                     case "Administrador":
                         intent = new Intent(LoginActivity.this, Administrador.class);
@@ -238,13 +251,10 @@ public class LoginActivity extends AppCompatActivity {
                         mAuth.signOut();
                         return;
                 }
+                // *** FIN: CÓDIGO RESTAURADO ***
 
-                if (nombre != null) {
-                    intent.putExtra("NOMBRE_COMPLETO", nombre);
-                }
-                if (expediente != null) {
-                    intent.putExtra("NUMERO_EXPEDIENTE", expediente);
-                }
+                if (nombre != null) intent.putExtra("NOMBRE_COMPLETO", nombre);
+                if (expediente != null) intent.putExtra("NUMERO_EXPEDIENTE", expediente);
 
                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                 startActivity(intent);
@@ -263,11 +273,9 @@ public class LoginActivity extends AppCompatActivity {
         Log.d(TAG, "🔔 Iniciando suscripción a notificaciones...");
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
-                    != PackageManager.PERMISSION_GRANTED) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                 Log.d(TAG, "📱 Solicitando permiso de notificaciones Android 13+...");
-                ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.POST_NOTIFICATIONS}, 1);
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.POST_NOTIFICATIONS}, 1);
             } else {
                 Log.d(TAG, "✅ Permiso de notificaciones ya otorgado");
             }

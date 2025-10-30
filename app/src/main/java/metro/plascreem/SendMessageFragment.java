@@ -139,7 +139,6 @@ public class SendMessageFragment extends Fragment {
             @Override
             public void onDataCancelled(String message) {
                 Log.e(TAG, "Error al obtener el nombre del remitente: " + message);
-                // Fallback a título genérico si no se puede obtener el nombre
                 saveMessageAndSendNotification(currentUserId, messageContent, "Nuevo Mensaje");
             }
         });
@@ -153,7 +152,10 @@ public class SendMessageFragment extends Fragment {
         if (messageId != null) {
             messagesRef.child(messageId).setValue(directMessage).addOnCompleteListener(task -> {
                 if (task.isSuccessful()) {
-                    sendPushNotification(notificationTitle, messageContent, selectedUser.getFcmToken(), null);
+                    // *** INICIO DE LA MODIFICACIÓN ***
+                    // Ahora se pasa el ID del remitente (currentUserId) a la función de notificación.
+                    sendPushNotification(notificationTitle, messageContent, selectedUser.getFcmToken(), null, currentUserId);
+                    // *** FIN DE LA MODIFICACIÓN ***
                 } else {
                     Toast.makeText(getContext(), "Error al guardar el mensaje.", Toast.LENGTH_SHORT).show();
                     setLoading(false);
@@ -172,7 +174,8 @@ public class SendMessageFragment extends Fragment {
             return;
         }
         setLoading(true);
-        sendPushNotification("¡Alerta Importante!", messageContent, null, "all");
+        // Las alertas no necesitan un senderId porque no abren un chat.
+        sendPushNotification("¡Alerta Importante!", messageContent, null, "all", null);
     }
 
     private void loadUsersByRole(String role) {
@@ -196,7 +199,10 @@ public class SendMessageFragment extends Fragment {
         });
     }
 
-    private void sendPushNotification(String title, String body, @Nullable String token, @Nullable String topic) {
+    // *** INICIO DE LA MODIFICACIÓN ***
+    // La firma del método ahora acepta un senderId opcional.
+    private void sendPushNotification(String title, String body, @Nullable String token, @Nullable String topic, @Nullable String senderId) {
+        // *** FIN DE LA MODIFICACIÓN ***
         String functionUrl = "https://capacitacion-mrodante.netlify.app/.netlify/functions/send-notification";
         JSONObject payload = new JSONObject();
         try {
@@ -204,6 +210,10 @@ public class SendMessageFragment extends Fragment {
             payload.put("body", body);
             if (token != null) payload.put("token", token);
             if (topic != null) payload.put("topic", topic);
+            // *** INICIO DE LA MODIFICACIÓN ***
+            // Se añade el senderId al cuerpo JSON que se envía a la función de Netlify.
+            if (senderId != null) payload.put("senderId", senderId);
+            // *** FIN DE LA MODIFICACIÓN ***
         } catch (JSONException e) {
             Log.e(TAG, "Error creando JSON para notificación", e);
             setLoading(false);
