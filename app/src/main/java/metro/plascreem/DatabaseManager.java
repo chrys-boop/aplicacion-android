@@ -1,3 +1,4 @@
+
 package metro.plascreem;
 
 import android.content.Context;
@@ -103,6 +104,7 @@ public class DatabaseManager {
         mAuth.createUserWithEmailAndPassword(email, password)
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
+                        listener.onSuccess();
                         String userId = mAuth.getCurrentUser().getUid();
                         Map<String, Object> userData = new HashMap<>();
                         userData.put("email", email);
@@ -114,10 +116,7 @@ public class DatabaseManager {
 
                         mDatabase.child("users").child(userId).setValue(userData)
                                 .addOnCompleteListener(dbTask -> {
-                                    if (dbTask.isSuccessful()) {
-                                        listener.onSuccess();
-                                    } else {
-                                        listener.onFailure(dbTask.getException().getMessage());
+                                    if (!dbTask.isSuccessful()) {
                                         Log.e(TAG, "Error al guardar datos de usuario.", dbTask.getException());
                                     }
                                 });
@@ -161,15 +160,8 @@ public class DatabaseManager {
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
                         String userId = mAuth.getCurrentUser().getUid();
-                        mDatabase.child("users").child(userId).child("lastConnection").setValue(System.currentTimeMillis())
-                                .addOnCompleteListener(dbTask -> {
-                                    if (dbTask.isSuccessful()) {
-                                        listener.onSuccess();
-                                    } else {
-                                        Log.e(TAG, "Failed to update last connection time.", dbTask.getException());
-                                        listener.onSuccess();
-                                    }
-                                });
+                        mDatabase.child("users").child(userId).child("lastConnection").setValue(System.currentTimeMillis());
+                        listener.onSuccess();
                     } else {
                         listener.onFailure(task.getException().getMessage());
                     }
@@ -351,6 +343,46 @@ public class DatabaseManager {
                 });
     }
 
+    // *** INICIO DE LA CORRECCIÓN ***
+    public void sendDirectMessage(String senderId, String recipientId, String messageContent, @NonNull final DataSaveListener listener) {
+        if (senderId == null || recipientId == null || messageContent == null || messageContent.trim().isEmpty()) {
+            listener.onFailure("Los IDs de usuario y el mensaje no pueden ser nulos o vacíos.");
+            return;
+        }
+
+        // Crear una ID de chat única y consistente para ambos usuarios
+        String chatId;
+        if (senderId.compareTo(recipientId) > 0) {
+            chatId = senderId + "_" + recipientId;
+        } else {
+            chatId = recipientId + "_" + senderId;
+        }
+
+        DatabaseReference messageRef = mDatabase.child("direct_messages").child(chatId).push();
+        String messageId = messageRef.getKey();
+
+        if (messageId == null) {
+            listener.onFailure("No se pudo generar un ID para el mensaje.");
+            return;
+        }
+
+        // Se crea un objeto DirectMessage completo para asegurar la consistencia de los datos
+        DirectMessage directMessage = new DirectMessage(
+                messageId,
+                senderId,
+                recipientId,
+                messageContent, // Contenido del mensaje
+                "message",      // Tipo del mensaje
+                System.currentTimeMillis()
+        );
+
+        // Se guarda el objeto completo en la base de datos
+        messageRef.setValue(directMessage)
+                .addOnSuccessListener(aVoid -> listener.onSuccess())
+                .addOnFailureListener(e -> listener.onFailure(e.getMessage()));
+    }
+    // *** FIN DE LA CORRECCIÓN ***
+
     public void logDownloadEvent(String userId, String userName, String fileName, @NonNull final DataSaveListener listener) {
         if (userId == null || userId.isEmpty() || fileName == null || fileName.isEmpty()) {
             listener.onFailure("UserID o FileName inválido.");
@@ -419,8 +451,8 @@ public class DatabaseManager {
     // --- NUEVO MÉTODO PARA EL PERFIL DEL TRABAJADOR ---
     public void updateWorkerProfile(String userId, Map<String, Object> workerProfile, DataSaveListener listener) {
         mDatabase.child("users").child(userId).updateChildren(workerProfile)
-                .addOnSuccessListener(aVoid -> listener.onSuccess())
-                .addOnFailureListener(e -> listener.onFailure(e.getMessage()));
+                        .addOnSuccessListener(aVoid -> listener.onSuccess())
+                        .addOnFailureListener(e -> listener.onFailure(e.getMessage()));
     }
 
     public void getEventsForDate(String date, EventsListener listener) {

@@ -15,6 +15,7 @@ import com.android.volley.Request;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -41,14 +42,20 @@ public class ChatActivity extends AppCompatActivity {
     private String recipientId;
     private String currentUserId;
     private String recipientFcmToken;
+    private String currentUserFullName;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.fragment_chat_activity);
 
-        currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
-        // CORRECCIÓN: Usar la clave estandarizada "senderId" que ahora viene del Login o del Servicio
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser == null) {
+            Toast.makeText(this, "Error: Usuario no autenticado.", Toast.LENGTH_LONG).show();
+            finish();
+            return;
+        }
+        currentUserId = currentUser.getUid();
         recipientId = getIntent().getStringExtra("senderId");
 
         recyclerViewMessages = findViewById(R.id.recycler_view_messages);
@@ -56,30 +63,56 @@ public class ChatActivity extends AppCompatActivity {
         buttonSend = findViewById(R.id.button_send);
 
         setupRecyclerView();
+
         fetchRecipientToken();
+        fetchCurrentUserInfo();
+
         loadMessages();
 
         buttonSend.setOnClickListener(v -> sendMessage());
     }
 
     private void setupRecyclerView() {
-        messageAdapter = new MessageAdapter(messageList);
+        messageAdapter = new MessageAdapter(messageList, currentUserId);
         LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
         recyclerViewMessages.setLayoutManager(linearLayoutManager);
         recyclerViewMessages.setAdapter(messageAdapter);
     }
 
     private void fetchRecipientToken() {
-        DatabaseReference userRef = FirebaseDatabase.getInstance().getReference("Users").child(recipientId);
+        DatabaseReference userRef = FirebaseDatabase.getInstance().getReference("users").child(recipientId);
         userRef.child("fcmToken").addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 recipientFcmToken = snapshot.getValue(String.class);
+                if (recipientFcmToken == null) {
+                    Log.w(TAG, "El destinatario no tiene un token FCM registrado.");
+                }
             }
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
                 Log.e(TAG, "Error al obtener el token del destinatario: " + error.getMessage());
+            }
+        });
+    }
+
+    private void fetchCurrentUserInfo() {
+        DatabaseReference currentUserRef = FirebaseDatabase.getInstance().getReference("users").child(currentUserId);
+        currentUserRef.child("nombreCompleto").addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                currentUserFullName = snapshot.getValue(String.class);
+                if (currentUserFullName == null) {
+                    Log.w(TAG, "No se pudo obtener el nombre del usuario actual. Se usará un nombre genérico.");
+                    currentUserFullName = "Alguien";
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Log.e(TAG, "Error al obtener el nombre del usuario actual: " + error.getMessage());
+                currentUserFullName = "Alguien";
             }
         });
     }
@@ -92,13 +125,15 @@ public class ChatActivity extends AppCompatActivity {
         }
         String chatNode = getChatNode(currentUserId, recipientId);
         DatabaseReference messagesRef = FirebaseDatabase.getInstance().getReference("direct_messages").child(chatNode);
-        messagesRef.addValueEventListener(new ValueEventListener() {
+        messagesRef.orderByChild("timestamp").addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 messageList.clear();
                 for (DataSnapshot messageSnapshot : snapshot.getChildren()) {
                     DirectMessage message = messageSnapshot.getValue(DirectMessage.class);
-                    messageList.add(message);
+                    if (message != null) { // Comprobación de nulidad
+                        messageList.add(message);
+                    }
                 }
                 messageAdapter.notifyDataSetChanged();
                 recyclerViewMessages.scrollToPosition(messageList.size() - 1);
@@ -117,52 +152,63 @@ public class ChatActivity extends AppCompatActivity {
             return;
         }
 
-        String chatNode = getChatNode(currentUserId, recipientId);
-        DatabaseReference messagesRef = FirebaseDatabase.getInstance().getReference("direct_messages").child(chatNode);
+        DatabaseManager dbManager = new DatabaseManager(this);
+        // Pasamos el recipientId que ya tenemos en la actividad
+        dbManager.sendDirectMessage(currentUserId, recipientId, content, new DatabaseManager.DataSaveListener() {
+            @Override
+            public void onSuccess() {
+                editTextMessage.setText("");
+                sendPushNotification(content);
+            }
 
-        String messageId = messagesRef.push().getKey();
-        DirectMessage message = new DirectMessage(messageId, currentUserId, recipientId, content, "message", System.currentTimeMillis());
-
-        if (messageId != null) {
-            messagesRef.child(messageId).setValue(message).addOnCompleteListener(task -> {
-                if (task.isSuccessful()) {
-                    editTextMessage.setText("");
-                    sendPushNotification(content);
-                }
-            });
-        }
+            @Override
+            public void onFailure(String message) {
+                Toast.makeText(ChatActivity.this, "Error al enviar el mensaje: " + message, Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void sendPushNotification(String body) {
         if (recipientFcmToken == null || recipientFcmToken.isEmpty()) {
+            Log.w(TAG, "No se envía notificación push porque el destinatario no tiene token.");
+            return;
+        }
+        if (currentUserFullName == null) {
+            Log.w(TAG, "No se envía notificación push porque el nombre del remitente aún no se ha cargado.");
             return;
         }
 
         String functionUrl = "https://capacitacion-mrodante.netlify.app/.netlify/functions/send-notification";
         JSONObject payload = new JSONObject();
         try {
-            payload.put("title", "Nuevo Mensaje");
+            payload.put("isChatMessage", true);
+            payload.put("senderId", currentUserId);
+            payload.put("senderName", currentUserFullName);
+            payload.put("recipientId", recipientId);
+            payload.put("title", "Nuevo mensaje de " + currentUserFullName);
             payload.put("body", body);
             payload.put("token", recipientFcmToken);
-            // Esta es la clave que se envía en la notificación
-            payload.put("senderId", currentUserId);
+
         } catch (JSONException e) {
-            Log.e(TAG, "Error creando JSON para notificación", e);
+            Log.e(TAG, "Error creando JSON para notificación de chat", e);
             return;
         }
 
         JsonObjectRequest request = new JsonObjectRequest(Request.Method.POST, functionUrl, payload,
-                response -> Log.d(TAG, "Notificación enviada con éxito."),
-                error -> Log.e(TAG, "Error al enviar la notificación push: " + error.toString()));
+                response -> Log.d(TAG, "Petición de notificación enviada con éxito."),
+                error -> Log.e(TAG, "Error al enviar la petición de notificación: " + error.toString()));
         Volley.newRequestQueue(this).add(request);
     }
 
+    // *** INICIO DE LA CORRECCIÓN ***
     private String getChatNode(String userId1, String userId2) {
+        if (userId1 == null || userId2 == null) return "";
+        // Se asegura que el ID del chat sea siempre el mismo, sin importar quién envía el mensaje.
         if (userId1.compareTo(userId2) > 0) {
             return userId1 + "_" + userId2;
         } else {
             return userId2 + "_" + userId1;
         }
     }
+    // *** FIN DE LA CORRECCIÓN ***
 }
-

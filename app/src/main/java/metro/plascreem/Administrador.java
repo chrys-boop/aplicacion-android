@@ -46,9 +46,15 @@ public class Administrador extends AppCompatActivity {
             replaceFragment(new SendMessageFragment(), true);
         });
 
+        // Listener para el botón que abre la lista de conversaciones
+        FloatingActionButton fabOpenChat = findViewById(R.id.fab_open_chat);
+        fabOpenChat.setOnClickListener(view -> {
+            replaceFragment(new ConversationsFragment(), true);
+        });
+
         subscribeToNotifications();
         bottomNavigationView = findViewById(R.id.admin_bottom_navigation);
-// Configurar el listener para el BottomNavigationView
+        // Configurar el listener para el BottomNavigationView
         bottomNavigationView.setOnItemSelectedListener(item -> {
             Fragment selectedFragment = null;
             // Manejar la selección de elementos del menú
@@ -77,14 +83,14 @@ public class Administrador extends AppCompatActivity {
             bottomNavigationView.setSelectedItemId(R.id.nav_perfil);
         }
     }
-// Crear el menú de opciones
+    // Crear el menú de opciones
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.main_options_menu, menu);
         return true;
     }
-// Manejar la selección de elementos del menú
+    // Manejar la selección de elementos del menú
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         int itemId = item.getItemId();
@@ -106,7 +112,7 @@ public class Administrador extends AppCompatActivity {
         }
         return super.onOptionsItemSelected(item);
     }
-// Reemplazar el fragmento actual
+    // Reemplazar el fragmento actual
     private void replaceFragment(Fragment fragment, boolean addToBackStack) {
         FragmentManager fragmentManager = getSupportFragmentManager();
         FragmentTransaction transaction = fragmentManager.beginTransaction();
@@ -116,7 +122,7 @@ public class Administrador extends AppCompatActivity {
         }
         transaction.commit();
     }
-// Suscribir al topic "all"
+    // Suscribir al topic "all"
     private void subscribeToNotifications() {
         FirebaseMessaging.getInstance().subscribeToTopic("all")
                 .addOnCompleteListener(task -> {
@@ -128,4 +134,3 @@ public class Administrador extends AppCompatActivity {
                 });
     }
 }
-

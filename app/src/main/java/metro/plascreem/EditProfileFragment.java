@@ -9,6 +9,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Spinner;
@@ -30,16 +31,13 @@ public class EditProfileFragment extends Fragment {
 
     private EditText etNombre, etApellidoPaterno, etApellidoMaterno, etExpediente, etArea, etCargo, etFechaIngreso;
     private Spinner spinnerTitularType, spinnerHoraEntrada, spinnerHoraSalida;
+    private AutoCompleteTextView spinnerCategoria; // <<< NUEVO
     private Button btnGuardar;
     private DatabaseManager databaseManager;
     private ExcelManager excelManager;
     private FirebaseAuth mAuth;
 
     private static final Pattern DATE_PATTERN = Pattern.compile("^([0-9]{2})/([0-9]{2})/([0-9]{4})$");
-
-    public EditProfileFragment() {
-        // Required empty public constructor
-    }
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -64,6 +62,7 @@ public class EditProfileFragment extends Fragment {
         spinnerTitularType = view.findViewById(R.id.spinner_titular_type);
         spinnerHoraEntrada = view.findViewById(R.id.spinner_hora_entrada);
         spinnerHoraSalida = view.findViewById(R.id.spinner_hora_salida);
+        spinnerCategoria = view.findViewById(R.id.spinner_categoria); // <<< NUEVO
         btnGuardar = view.findViewById(R.id.btn_guardar_perfil);
 
         setupSpinners();
@@ -84,6 +83,13 @@ public class EditProfileFragment extends Fragment {
                 R.array.titular_options, android.R.layout.simple_spinner_item);
         titularAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerTitularType.setAdapter(titularAdapter);
+
+        // <<< INICIO: LÓGICA PARA EL NUEVO SPINNER DE CATEGORÍA >>>
+        ArrayAdapter<CharSequence> categoryAdapter = ArrayAdapter.createFromResource(getContext(),
+                R.array.categorias, android.R.layout.simple_spinner_item);
+        categoryAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerCategoria.setAdapter(categoryAdapter);
+        // <<< FIN: LÓGICA PARA EL NUEVO SPINNER DE CATEGORÍA >>>
 
         // Spinners for Hours
         List<String> hours = new ArrayList<>();
@@ -106,10 +112,8 @@ public class EditProfileFragment extends Fragment {
                     if (firebaseData != null && isAdded()) {
                         String expediente = Objects.toString(firebaseData.get("numeroExpediente"), "");
                         etExpediente.setText(expediente);
-
                         Map<String, Object> excelData = excelManager.findUserByExpediente(expediente);
                         Map<String, Object> dataToUse = (excelData != null) ? excelData : firebaseData;
-
                         populateFields(dataToUse);
                     }
                 }
@@ -132,6 +136,7 @@ public class EditProfileFragment extends Fragment {
 
         etArea.setText(Objects.toString(data.get("area"), "").toUpperCase());
         etCargo.setText(Objects.toString(data.get("cargo"), "").toUpperCase());
+        spinnerCategoria.setText(Objects.toString(data.get("categoria"), ""), false); // <<< NUEVO
         etFechaIngreso.setText(Objects.toString(data.get("fechaIngreso"), ""));
 
         setSpinnerSelection(spinnerTitularType, Objects.toString(data.get("titularType"), ""));
@@ -140,6 +145,25 @@ public class EditProfileFragment extends Fragment {
     }
 
     private void showConfirmationDialog() {
+        String nombre = etNombre.getText().toString().toUpperCase().trim();
+        String apellidoPaterno = etApellidoPaterno.getText().toString().toUpperCase().trim();
+        String expediente = etExpediente.getText().toString().toUpperCase().trim();
+        String categoria = spinnerCategoria.getText().toString().trim(); // <<< NUEVO
+        String fechaIngreso = etFechaIngreso.getText().toString().trim();
+
+        if (nombre.isEmpty() || apellidoPaterno.isEmpty() || expediente.isEmpty() || fechaIngreso.isEmpty() || categoria.isEmpty() || categoria.equalsIgnoreCase("Seleccione una categoria")) {
+            Toast.makeText(getContext(), "Por favor, complete todos los campos obligatorios", Toast.LENGTH_SHORT).show();
+            if (categoria.isEmpty() || categoria.equalsIgnoreCase("Seleccione una categoria")) {
+                spinnerCategoria.setError("Debe seleccionar una categoría");
+            }
+            return;
+        }
+
+        if (!isValidDate(fechaIngreso)) {
+            etFechaIngreso.setError("Formato no válido. Use DD/MM/AAAA");
+            return;
+        }
+
         new AlertDialog.Builder(getContext())
                 .setTitle("Confirmar Cambios")
                 .setMessage("¿Estás seguro de que deseas guardar la información? Por favor, verifica que todos los datos sean correctos.")
@@ -155,6 +179,7 @@ public class EditProfileFragment extends Fragment {
         String expediente = etExpediente.getText().toString().toUpperCase().trim();
         String area = etArea.getText().toString().toUpperCase().trim();
         String cargo = etCargo.getText().toString().toUpperCase().trim();
+        String categoria = spinnerCategoria.getText().toString().toUpperCase().trim(); // <<< NUEVO
         String fechaIngreso = etFechaIngreso.getText().toString().trim();
         String titularType = spinnerTitularType.getSelectedItem().toString();
         String horaEntrada = spinnerHoraEntrada.getSelectedItem().toString();
@@ -162,11 +187,6 @@ public class EditProfileFragment extends Fragment {
 
         if (nombre.isEmpty() || apellidoPaterno.isEmpty() || expediente.isEmpty()) {
             Toast.makeText(getContext(), "Nombre, Apellido y Expediente son obligatorios.", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        if (!isValidDate(fechaIngreso)) {
-            etFechaIngreso.setError("Formato no válido. Use DD/MM/AAAA");
             return;
         }
 
@@ -181,19 +201,17 @@ public class EditProfileFragment extends Fragment {
             userData.put("numeroExpediente", expediente);
             userData.put("area", area);
             userData.put("cargo", cargo);
+            userData.put("categoria", categoria); // <<< NUEVO
             userData.put("titularType", titularType);
             userData.put("fechaIngreso", fechaIngreso);
             userData.put("horarioEntrada", horaEntrada);
             userData.put("horarioSalida", horaSalida);
-            // Also save individual name parts if needed
             userData.put("nombre", nombre);
             userData.put("apellidoPaterno", apellidoPaterno);
             userData.put("apellidoMaterno", apellidoMaterno);
 
-            // Save to Excel
             excelManager.saveUserData(userData);
 
-            // Save to Firebase
             databaseManager.updateWorkerProfile(userId, userData, new DatabaseManager.DataSaveListener() {
                 @Override
                 public void onSuccess() {
@@ -242,4 +260,3 @@ public class EditProfileFragment extends Fragment {
         }
     }
 }
-

@@ -3,7 +3,10 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="8dp">
+    android:paddingStart="60dp"
+    android:paddingEnd="8dp"
+    android:paddingTop="4dp"
+    android:paddingBottom="4dp">
 
     <TextView
         android:id="@+id/text_view_message"
@@ -14,5 +17,14 @@
         android:padding="12dp"
         android:textColor="@android:color/white"
         android:text="Este es un mensaje enviado" />
+
+    <TextView
+        android:id="@+id/text_view_timestamp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end"
+        android:textSize="10sp"
+        android:textColor="@android:color/black"
+        android:text="10:00 AM" />
 
 </LinearLayout>

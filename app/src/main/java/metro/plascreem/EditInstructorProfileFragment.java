@@ -43,6 +43,7 @@ public class EditInstructorProfileFragment extends Fragment {
         mAuth = FirebaseAuth.getInstance();
 
         setupHourSpinners();
+        setupCategorySpinner();
         loadProfileData();
 
         binding.btnGuardarPerfil.setOnClickListener(v -> showConfirmationDialog());
@@ -55,12 +56,17 @@ public class EditInstructorProfileFragment extends Fragment {
         for (int i = 0; i < 24; i++) {
             hours.add(String.format("%02d:00", i));
         }
-
         ArrayAdapter<String> adapter = new ArrayAdapter<>(getContext(), android.R.layout.simple_spinner_item, hours);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-
         binding.spinnerHoraEntrada.setAdapter(adapter);
         binding.spinnerHoraSalida.setAdapter(adapter);
+    }
+
+    private void setupCategorySpinner() {
+        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(getContext(),
+                R.array.categorias, android.R.layout.simple_spinner_item);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        binding.spinnerCategoria.setAdapter(adapter);
     }
 
     private void loadProfileData() {
@@ -73,10 +79,8 @@ public class EditInstructorProfileFragment extends Fragment {
                     if (firebaseData != null && isAdded()) {
                         String expediente = Objects.toString(firebaseData.get("numeroExpediente"), "");
                         binding.etExpediente.setText(expediente);
-
                         Map<String, Object> excelData = excelManager.findUserByExpediente(expediente);
                         Map<String, Object> dataToUse = (excelData != null) ? excelData : firebaseData;
-
                         populateFields(dataToUse);
                     }
                 }
@@ -98,7 +102,9 @@ public class EditInstructorProfileFragment extends Fragment {
         binding.etApellidoPaterno.setText(nameParts.length > 1 ? nameParts[1].toUpperCase() : "");
         binding.etApellidoMaterno.setText(nameParts.length > 2 ? nameParts[2].toUpperCase() : "");
 
-        binding.etCategoria.setText(Objects.toString(data.get("categoria"), "").toUpperCase());
+        String categoria = Objects.toString(data.get("categoria"), "");
+        binding.spinnerCategoria.setText(categoria.toUpperCase(), false);
+
         binding.etFechaIngreso.setText(Objects.toString(data.get("fechaIngreso"), ""));
 
         setSpinnerSelection(binding.spinnerHoraEntrada, Objects.toString(data.get("horarioEntrada"), ""));
@@ -109,11 +115,14 @@ public class EditInstructorProfileFragment extends Fragment {
         String nombre = binding.etNombre.getText().toString().toUpperCase().trim();
         String apellidoPaterno = binding.etApellidoPaterno.getText().toString().toUpperCase().trim();
         String expediente = binding.etExpediente.getText().toString().toUpperCase().trim();
-        String categoria = binding.etCategoria.getText().toString().toUpperCase().trim();
+        String categoria = binding.spinnerCategoria.getText().toString().trim();
         String fechaIngreso = binding.etFechaIngreso.getText().toString().trim();
 
-        if (nombre.isEmpty() || apellidoPaterno.isEmpty() || expediente.isEmpty() || categoria.isEmpty() || fechaIngreso.isEmpty()) {
+        if (nombre.isEmpty() || apellidoPaterno.isEmpty() || expediente.isEmpty() || fechaIngreso.isEmpty() || categoria.isEmpty() || categoria.equalsIgnoreCase("Seleccione una categoria")) {
             Toast.makeText(getContext(), "Por favor, complete todos los campos obligatorios", Toast.LENGTH_SHORT).show();
+            if (categoria.isEmpty() || categoria.equalsIgnoreCase("Seleccione una categoria")) {
+                binding.spinnerCategoria.setError("Debe seleccionar una categoría");
+            }
             return;
         }
 
@@ -143,7 +152,7 @@ public class EditInstructorProfileFragment extends Fragment {
         String apellidoMaterno = binding.etApellidoMaterno.getText().toString().toUpperCase().trim();
         String nombreCompleto = (nombre + " " + apellidoPaterno + " " + apellidoMaterno).trim();
         String expediente = binding.etExpediente.getText().toString().toUpperCase().trim();
-        String categoria = binding.etCategoria.getText().toString().toUpperCase().trim();
+        String categoria = binding.spinnerCategoria.getText().toString().toUpperCase().trim();
         String fechaIngreso = binding.etFechaIngreso.getText().toString().trim();
         String horarioEntrada = (String) binding.spinnerHoraEntrada.getSelectedItem();
         String horarioSalida = (String) binding.spinnerHoraSalida.getSelectedItem();
@@ -161,7 +170,9 @@ public class EditInstructorProfileFragment extends Fragment {
 
         excelManager.saveUserData(userProfile);
 
+        // <<< INICIO: CORRECCIÓN A MÉTODO EXISTENTE >>>
         databaseManager.updateWorkerProfile(userId, userProfile, new DatabaseManager.DataSaveListener() {
+            // <<< FIN: CORRECCIÓN >>>
             @Override
             public void onSuccess() {
                 if (isAdded() && getActivity() != null) {
@@ -210,4 +221,3 @@ public class EditInstructorProfileFragment extends Fragment {
         binding = null;
     }
 }
-

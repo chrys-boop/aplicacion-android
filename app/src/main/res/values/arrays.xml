@@ -12,4 +12,60 @@
         <item>Titular</item>
         <item>Suplente</item>
     </string-array>
+
+    <string-array name="categorias">
+        <item>Seleccione una categoria</item>
+        <item>Administrativo Especializado "B" N-5</item>
+        <item>Almacenista "A"</item>
+        <item>Admninistrativo C-7</item>
+        <item>Analista Especializado "A" N-10</item>
+        <item>Analista Monitor "F"</item>
+        <item>Analista Sistema Administrativo "B" N-8</item>
+        <item>Asistente Tecnico Profesional</item>
+        <item>Ayudante Administrativo "A" N-10</item>
+        <item>Chofer Gerente N-5</item>
+        <item>Coordinador</item>
+        <item>Coordinador "A"</item>
+        <item>Coordinador de Proyectos "A" N-14</item>
+        <item>Coordinador de Proyectos "B" N-13</item>
+        <item>Coordinador de Proyectos "C" N-12</item>
+        <item>Coordinador de Proyectos "K" N-12</item>
+        <item>Coordinador de Proyectos "L"</item>
+        <item>Coordinador de Proyectos "M"</item>
+        <item>Coordinador de Proyectos "A" N-14</item>
+        <item>Coordinador Especializado N-10</item>
+        <item>Director</item>
+        <item>Gerente</item>
+        <item>Ingeniero Especialista "A" N-11</item>
+        <item>Ingeniero Especialista "I"</item>
+        <item>Jefe de Proyecto "C" N-10</item>
+        <item>Jefe de Proyecto "A" N-12</item>
+        <item>Jefe de Proyecto "J"</item>
+        <item>Jefe de Proyecto "K"</item>
+        <item>Jefe de Proyecto "B" N-11</item>
+        <item>Jefe de Seccion "A" N-13</item>
+        <item>Jefe de seccion "L"</item>
+        <item>Operador  de vehiculos  "A"</item>
+        <item>Subgerente</item>
+        <item>Subjefe Coordinador N-20</item>
+        <item>Subjefe  de Departamento "A" N-14</item>
+        <item>Subjefe de Departamento "M"</item>
+        <item>Subjefe de Departamento "B" N-11</item>
+        <item>ubjefe de Seccion "N-12"</item>
+        <item>Subjefe  de Seccion "K"</item>
+        <item>Subjefe de Departamento  "A" N-14</item>
+        <item>Subjefe de Seccion "K",</item>
+        <item>Subjefe de Seccion N-10</item>
+        <item>Sup. De Mantto "A" N-10</item>
+        <item>Supervisor de Control de calidad I</item>
+        <item>Supervisor de Control de Calidad  "B" N-7</item>
+        <item>Supervisor  Mantenimiento "A" N-10</item>
+        <item>Supervisos Mantenimiento "B" N-7</item>
+        <item>Supervisor Mantenimiento "I" "</item>
+        <item>Tecnico en Mantenimiento al Material Rodante "A" MR</item>
+        <item>Tecnico en Mantenimiento al Material Rodante "B" MR</item>
+        <item>Tecnico Profesional "A" MR N-10</item>
+        <item>Vigilante "C"</item>
+        <item>Vigilante "A"</item>
+    </string-array>
 </resources>

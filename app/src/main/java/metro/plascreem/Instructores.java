@@ -47,6 +47,11 @@ public class Instructores extends AppCompatActivity {
             replaceFragment(new SendMessageFragment(), true, R.id.fragment_container_instructores);
         });
 
+        // Listener para el botón que abre la lista de conversaciones
+        binding.fabOpenChat.setOnClickListener(v -> {
+            replaceFragment(new ConversationsFragment(), true, R.id.fragment_container_instructores);
+        });
+
         if (savedInstanceState == null) {
             binding.bottomNavigationInstructores.setSelectedItemId(R.id.navigation_profile);
         }

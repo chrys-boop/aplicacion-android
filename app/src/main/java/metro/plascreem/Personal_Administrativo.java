@@ -40,6 +40,12 @@ public class Personal_Administrativo extends AppCompatActivity {
             replaceFragment(new SendMessageFragment(), true);
         });
 
+        // Listener para el botón que abre la lista de conversaciones
+        FloatingActionButton fabOpenChat = findViewById(R.id.fab_open_chat);
+        fabOpenChat.setOnClickListener(view -> {
+            replaceFragment(new ConversationsFragment(), true);
+        });
+
         // Suscribir al usuario al topic \"all\" para recibir notificaciones
         subscribeToNotifications();
 

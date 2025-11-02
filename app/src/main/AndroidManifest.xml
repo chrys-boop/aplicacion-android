@@ -65,6 +65,12 @@
             </intent-filter>
         </service>
 
+        <!-- Receptor para manejar las respuestas rápidas de las notificaciones -->
+        <receiver
+            android:name=".NotificationReplyReceiver"
+            android:enabled="true"
+            android:exported="false" />
+
     </application>
 
 </manifest>

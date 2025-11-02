@@ -15,4 +15,12 @@
         android:textColor="@android:color/black"
         android:text="Este es un mensaje recibido" />
 
+    <TextView
+        android:id="@+id/text_view_timestamp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="start"
+        android:textSize="10sp"
+        android:textColor="@android:color/black"
+        android:text="10:01 AM" />
 </LinearLayout>

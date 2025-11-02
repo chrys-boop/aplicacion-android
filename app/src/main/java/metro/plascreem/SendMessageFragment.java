@@ -21,8 +21,6 @@ import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -99,6 +97,7 @@ public class SendMessageFragment extends Fragment {
         setTargetedMessagingControlsEnabled(false);
     }
 
+    // *** INICIO DE LA CORRECCIÓN ***
     private void handleSendMessage() {
         if (selectedUser == null || selectedUser.getUid() == null) {
             Toast.makeText(getContext(), "Por favor, selecciona un usuario específico.", Toast.LENGTH_SHORT).show();
@@ -110,62 +109,54 @@ public class SendMessageFragment extends Fragment {
             Toast.makeText(getContext(), "El mensaje no puede estar vacío.", Toast.LENGTH_SHORT).show();
             return;
         }
-        if (selectedUser.getFcmToken() == null || selectedUser.getFcmToken().isEmpty()) {
-            Toast.makeText(getContext(), "Este usuario no tiene un token de notificación activo.", Toast.LENGTH_SHORT).show();
+
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser == null) {
+            Toast.makeText(getContext(), "Error: no se pudo identificar al remitente.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        final String currentUserId = currentUser.getUid();
+        final String recipientId = selectedUser.getUid();
+        final String recipientToken = selectedUser.getFcmToken();
+
+        if (recipientToken == null || recipientToken.isEmpty()) {
+            Toast.makeText(getContext(), "Este usuario no puede recibir notificaciones en este momento.", Toast.LENGTH_SHORT).show();
             return;
         }
 
         setLoading(true);
 
-        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
-        if (currentUser == null) {
-            setLoading(false);
-            return;
-        }
-        final String currentUserId = currentUser.getUid();
-
-        dbManager.getUserDataMap(currentUserId, new DatabaseManager.UserDataMapListener() {
+        // 1. Guardar el mensaje en la base de datos usando la lógica centralizada.
+        dbManager.sendDirectMessage(currentUserId, recipientId, messageContent, new DatabaseManager.DataSaveListener() {
             @Override
-            public void onDataReceived(Map<String, Object> userData) {
-                String senderName = "Alguien";
-                if (userData != null && userData.get("nombreCompleto") != null) {
-                    senderName = (String) userData.get("nombreCompleto");
-                }
-                String notificationTitle = "Nuevo mensaje de: " + senderName;
+            public void onSuccess() {
+                // 2. Si se guarda con éxito, obtener el nombre del remitente para la notificación.
+                dbManager.getUserDataMap(currentUserId, new DatabaseManager.UserDataMapListener() {
+                    @Override
+                    public void onDataReceived(Map<String, Object> userData) {
+                        String senderName = (userData != null && userData.get("nombreCompleto") != null) ? (String) userData.get("nombreCompleto") : "Alguien";
+                        String notificationTitle = "Nuevo mensaje de " + senderName;
+                        // 3. Enviar la notificación PUSH.
+                        sendPushNotification(notificationTitle, messageContent, recipientToken, null, currentUserId);
+                    }
 
-                saveMessageAndSendNotification(currentUserId, messageContent, notificationTitle);
+                    @Override
+                    public void onDataCancelled(String message) {
+                        // Si falla obtener el nombre, enviar notificación con título genérico.
+                        sendPushNotification("Nuevo Mensaje", messageContent, recipientToken, null, currentUserId);
+                    }
+                });
             }
 
             @Override
-            public void onDataCancelled(String message) {
-                Log.e(TAG, "Error al obtener el nombre del remitente: " + message);
-                saveMessageAndSendNotification(currentUserId, messageContent, "Nuevo Mensaje");
+            public void onFailure(String message) {
+                Toast.makeText(getContext(), "Error al enviar el mensaje: " + message, Toast.LENGTH_SHORT).show();
+                setLoading(false);
             }
         });
     }
-
-    private void saveMessageAndSendNotification(String currentUserId, String messageContent, String notificationTitle) {
-        DatabaseReference messagesRef = FirebaseDatabase.getInstance().getReference("direct_messages").child(selectedUser.getUid());
-        String messageId = messagesRef.push().getKey();
-        DirectMessage directMessage = new DirectMessage(messageId, currentUserId, selectedUser.getUid(), messageContent, "message", System.currentTimeMillis());
-
-        if (messageId != null) {
-            messagesRef.child(messageId).setValue(directMessage).addOnCompleteListener(task -> {
-                if (task.isSuccessful()) {
-                    // *** INICIO DE LA MODIFICACIÓN ***
-                    // Ahora se pasa el ID del remitente (currentUserId) a la función de notificación.
-                    sendPushNotification(notificationTitle, messageContent, selectedUser.getFcmToken(), null, currentUserId);
-                    // *** FIN DE LA MODIFICACIÓN ***
-                } else {
-                    Toast.makeText(getContext(), "Error al guardar el mensaje.", Toast.LENGTH_SHORT).show();
-                    setLoading(false);
-                }
-            });
-        } else {
-            Toast.makeText(getContext(), "Error al crear el ID del mensaje.", Toast.LENGTH_SHORT).show();
-            setLoading(false);
-        }
-    }
+    // *** FIN DE LA CORRECIÓN ***
 
     private void handleSendAlert() {
         String messageContent = messageEditText.getText().toString().trim();
@@ -174,7 +165,7 @@ public class SendMessageFragment extends Fragment {
             return;
         }
         setLoading(true);
-        // Las alertas no necesitan un senderId porque no abren un chat.
+        // Las alertas generales no necesitan un senderId porque no abren un chat específico.
         sendPushNotification("¡Alerta Importante!", messageContent, null, "all", null);
     }
 
@@ -184,7 +175,7 @@ public class SendMessageFragment extends Fragment {
             @Override
             public void onDataReceived(List<User> data) {
                 userList.clear();
-                userList.add(new User("Seleccionar Usuario"));
+                userList.add(new User("Seleccionar Usuario")); // Placeholder
                 userList.addAll(data);
                 userAdapter.notifyDataSetChanged();
                 userSpinner.setText("", false);
@@ -199,21 +190,19 @@ public class SendMessageFragment extends Fragment {
         });
     }
 
-    // *** INICIO DE LA MODIFICACIÓN ***
-    // La firma del método ahora acepta un senderId opcional.
     private void sendPushNotification(String title, String body, @Nullable String token, @Nullable String topic, @Nullable String senderId) {
-        // *** FIN DE LA MODIFICACIÓN ***
         String functionUrl = "https://capacitacion-mrodante.netlify.app/.netlify/functions/send-notification";
         JSONObject payload = new JSONObject();
         try {
             payload.put("title", title);
             payload.put("body", body);
+            // Especifica que es una notificación de chat
+            payload.put("isChatMessage", true);
+
             if (token != null) payload.put("token", token);
             if (topic != null) payload.put("topic", topic);
-            // *** INICIO DE LA MODIFICACIÓN ***
-            // Se añade el senderId al cuerpo JSON que se envía a la función de Netlify.
             if (senderId != null) payload.put("senderId", senderId);
-            // *** FIN DE LA MODIFICACIÓN ***
+
         } catch (JSONException e) {
             Log.e(TAG, "Error creando JSON para notificación", e);
             setLoading(false);
@@ -222,14 +211,14 @@ public class SendMessageFragment extends Fragment {
 
         JsonObjectRequest request = new JsonObjectRequest(Request.Method.POST, functionUrl, payload,
                 response -> {
-                    Toast.makeText(getContext(), "Notificación enviada.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), "Mensaje enviado.", Toast.LENGTH_SHORT).show();
                     messageEditText.setText("");
                     setLoading(false);
                     if (getActivity() != null) getParentFragmentManager().popBackStack();
                 },
                 error -> {
-                    Log.e(TAG, "Error al enviar la notificación push: " + error.toString());
-                    Toast.makeText(getContext(), "Error al enviar.", Toast.LENGTH_SHORT).show();
+                    Log.e(TAG, "Error al enviar la notificación: " + error.toString());
+                    Toast.makeText(getContext(), "Error al enviar la notificación.", Toast.LENGTH_SHORT).show();
                     setLoading(false);
                 }
         );
@@ -256,5 +245,3 @@ public class SendMessageFragment extends Fragment {
         }
     }
 }
-
-

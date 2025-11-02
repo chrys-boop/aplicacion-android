@@ -8,9 +8,11 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.google.firebase.auth.FirebaseAuth;
-
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
+import java.util.TimeZone;
 
 public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageViewHolder> {
 
@@ -20,15 +22,15 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
     private List<DirectMessage> messageList;
     private String currentUserId;
 
-    public MessageAdapter(List<DirectMessage> messageList) {
+    public MessageAdapter(List<DirectMessage> messageList, String currentUserId) {
         this.messageList = messageList;
-        this.currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
+        this.currentUserId = currentUserId;
     }
 
     @Override
     public int getItemViewType(int position) {
         DirectMessage message = messageList.get(position);
-        if (message.getSenderId().equals(currentUserId)) {
+        if (message.getSenderId() != null && message.getSenderId().equals(currentUserId)) {
             return VIEW_TYPE_SENT;
         } else {
             return VIEW_TYPE_RECEIVED;
@@ -50,7 +52,11 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
     @Override
     public void onBindViewHolder(@NonNull MessageViewHolder holder, int position) {
         DirectMessage message = messageList.get(position);
-        holder.textViewMessage.setText(message.getMessage()); // Corregido de getContent a getMessage
+        holder.textViewMessage.setText(message.getMessage());
+
+        if (holder.textViewTimestamp != null) {
+            holder.textViewTimestamp.setText(formatTimestamp(message.getTimestamp()));
+        }
     }
 
     @Override
@@ -60,11 +66,29 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
 
     public static class MessageViewHolder extends RecyclerView.ViewHolder {
         TextView textViewMessage;
+        TextView textViewTimestamp;
 
         public MessageViewHolder(@NonNull View itemView) {
             super(itemView);
             textViewMessage = itemView.findViewById(R.id.text_view_message);
+            textViewTimestamp = itemView.findViewById(R.id.text_view_timestamp);
         }
     }
+
+    // *** INICIO DE LA CORRECCIÓN DE ZONA HORARIA ***
+    private String formatTimestamp(long timestamp) {
+        try {
+            SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.getDefault());
+            // Establecer explícitamente la zona horaria de la Ciudad de México
+            sdf.setTimeZone(TimeZone.getTimeZone("America/Mexico_City"));
+            Date date = new Date(timestamp);
+            return sdf.format(date);
+        } catch (Exception e) {
+            return ""; // Devuelve una cadena vacía en caso de error
+        }
+    }
+    // *** FIN DE LA CORRECCIÓN DE ZONA HORARIA ***
 }
+
+
 

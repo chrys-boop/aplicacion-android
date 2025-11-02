@@ -1,55 +1,83 @@
 import admin from 'firebase-admin';
 
+// Inicialización del SDK de Firebase Admin
 let firebaseApp;
 try {
   if (!admin.apps.length) {
     const serviceAccountString = process.env.FIREBASE_SERVICE_ACCOUNT;
-    if (!serviceAccountString) throw new Error("FIREBASE_SERVICE_ACCOUNT no definida.");
+    if (!serviceAccountString) throw new Error("La variable de entorno FIREBASE_SERVICE_ACCOUNT no está definida.");
     const serviceAccount = JSON.parse(serviceAccountString);
     firebaseApp = admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
   } else {
     firebaseApp = admin.app();
   }
 } catch (error) {
-  console.error("--- ERROR CRÍTICO DE INICIALIZACIÓN ---", error);
+  console.error("--- ERROR CRÍTICO DE INICIALIZACIÓN DE FIREBASE ---", error);
 }
 
-// Handler principal
+// Handler principal de la función de Netlify
 export const handler = async (event) => {
-  const headers = {
-    'Content-Type': 'application/json'
-  };
+  const headers = { 'Content-Type': 'application/json' };
 
   if (!firebaseApp) {
     return {
       statusCode: 500,
       headers: headers,
-      body: JSON.stringify({ error: "Error de configuración del servidor." })
+      body: JSON.stringify({ error: "Error en la configuración del servidor de Firebase." })
     };
   }
 
   try {
-    // *** INICIO DE LA MODIFICACIÓN ***
-    // Se extrae el senderId del cuerpo del evento.
-    const { title, body, token, topic, senderId } = JSON.parse(event.body);
+    // Extraer todos los datos del cuerpo de la solicitud
+    const {
+        title,
+        body,
+        token,
+        topic,
+        senderId,
+        isChatMessage,
+        senderName,
+        recipientId // <-- ¡Corregido! Se lee el recipientId
+    } = JSON.parse(event.body);
 
-    // Se crea un payload que incluye tanto la notificación visible como los datos adicionales.
-    const messagePayload = {
-      notification: {
-        title: title || 'Notificación',
-        body: body || 'Hay un nuevo mensaje.'
-      },
-      data: {
-        title: title || 'Notificación',
-        body: body || 'Hay un nuevo mensaje.'
+    let messagePayload;
+
+    // --- LÓGICA CORREGIDA PARA EL PAYLOAD DE FCM ---
+
+    if (isChatMessage) {
+      // --- CASO 1: Es una notificación de CHAT ---
+      // Se construye un payload de 'solo datos' que incluye TODOS los campos necesarios.
+      // La app Android se encargará de crear la notificación visible con respuesta rápida.
+      messagePayload = {
+        data: {
+          isChatMessage: "true",
+          senderId: senderId,
+          senderName: senderName,
+          recipientId: recipientId, // <-- ¡Corregido! Se añade al payload de datos
+          title: title,
+          body: body
+        }
+      };
+
+    } else {
+      // --- CASO 2: Es una notificación GENERAL ---
+      // Crea una notificación estándar visible directamente.
+      messagePayload = {
+        notification: {
+          title: title || 'Notificación',
+          body: body || 'Hay un nuevo mensaje.'
+        },
+        data: {
+          title: title || 'Notificación',
+          body: body || 'Hay un nuevo mensaje.'
+        }
+      };
+      if (senderId) {
+        messagePayload.data.senderId = senderId;
       }
-    };
-
-    // Se añade el senderId a los datos si existe. Esto es lo que usará la app para redirigir.
-    if (senderId) {
-      messagePayload.data.senderId = senderId;
     }
 
+    // Asignar el destinatario (token de un dispositivo o un tema)
     if (token) {
       messagePayload.token = token;
     } else if (topic) {
@@ -62,8 +90,8 @@ export const handler = async (event) => {
       };
     }
 
+    // Enviar el mensaje a través de FCM
     await admin.messaging().send(messagePayload);
-    // *** FIN DE LA MODIFICACIÓN ***
 
     return {
       statusCode: 200,
@@ -80,4 +108,6 @@ export const handler = async (event) => {
     };
   }
 };
+
+
 

@@ -122,4 +122,9 @@ Lo anterior se fundamenta en los artículos 6, apartado A, fracción II de la Co
         <item>Titular</item>
         <item>Trabajador</item>
     </string-array>
+
+    <string name="new_conversation">Nueva conversación</string>
+    <string name="contact_avatar">Avatar del contacto</string>
+    <string name="no_conversations_message">Aún no tienes conversaciones.</string>
+
 </resources>

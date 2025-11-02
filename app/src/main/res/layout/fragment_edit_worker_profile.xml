@@ -61,14 +61,22 @@
             android:layout_marginBottom="12dp"
             android:textAllCaps="true"/>
 
-        <EditText
-            android:id="@+id/et_categoria"
+        <!-- INICIO: Reemplazo del EditText de Categoría por un Spinner -->
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="CATEGORIA"
-            android:inputType="textCapWords"
-            android:layout_marginBottom="12dp"
-            android:textAllCaps="true"/>
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+            android:layout_marginBottom="12dp">
+
+            <AutoCompleteTextView
+                android:id="@+id/spinner_categoria"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="CATEGORÍA"
+                android:inputType="none" />
+
+        </com.google.android.material.textfield.TextInputLayout>
+        <!-- FIN: Reemplazo del EditText de Categoría -->
 
         <EditText
             android:id="@+id/et_fecha_ingreso"
