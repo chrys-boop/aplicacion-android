@@ -79,9 +79,30 @@ public class EditInstructorProfileFragment extends Fragment {
                     if (firebaseData != null && isAdded()) {
                         String expediente = Objects.toString(firebaseData.get("numeroExpediente"), "");
                         binding.etExpediente.setText(expediente);
-                        Map<String, Object> excelData = excelManager.findUserByExpediente(expediente);
-                        Map<String, Object> dataToUse = (excelData != null) ? excelData : firebaseData;
-                        populateFields(dataToUse);
+
+                        excelManager.findUserByExpediente(expediente, new ExcelManager.ExcelDataListener() {
+                            @Override
+                            public void onDataFound(Map<String, Object> excelData) {
+                                if (isAdded()) {
+                                    populateFields(excelData);
+                                }
+                            }
+
+                            @Override
+                            public void onDataNotFound() {
+                                if (isAdded()) {
+                                    populateFields(firebaseData);
+                                }
+                            }
+
+                            @Override
+                            public void onError(String message) {
+                                if (isAdded()) {
+                                    Toast.makeText(getContext(), "Error al cargar datos de Excel: " + message, Toast.LENGTH_SHORT).show();
+                                    populateFields(firebaseData); // Fallback to Firebase data
+                                }
+                            }
+                        });
                     }
                 }
 
@@ -168,23 +189,31 @@ public class EditInstructorProfileFragment extends Fragment {
         userProfile.put("horarioEntrada", horarioEntrada);
         userProfile.put("horarioSalida", horarioSalida);
 
-        excelManager.saveUserData(userProfile);
-
-        // <<< INICIO: CORRECCIÓN A MÉTODO EXISTENTE >>>
-        databaseManager.updateWorkerProfile(userId, userProfile, new DatabaseManager.DataSaveListener() {
-            // <<< FIN: CORRECCIÓN >>>
+        excelManager.saveUserData(userProfile, new DatabaseManager.DataSaveListener() {
             @Override
             public void onSuccess() {
-                if (isAdded() && getActivity() != null) {
-                    Toast.makeText(getContext(), "Perfil actualizado correctamente.", Toast.LENGTH_SHORT).show();
-                    getParentFragmentManager().popBackStack();
-                }
+                databaseManager.updateWorkerProfile(userId, userProfile, new DatabaseManager.DataSaveListener() {
+                    @Override
+                    public void onSuccess() {
+                        if (isAdded() && getActivity() != null) {
+                            Toast.makeText(getContext(), "Perfil actualizado correctamente.", Toast.LENGTH_SHORT).show();
+                            getParentFragmentManager().popBackStack();
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(String message) {
+                        if (isAdded()) {
+                            Toast.makeText(getContext(), "Error al actualizar en Firebase: " + message, Toast.LENGTH_LONG).show();
+                        }
+                    }
+                });
             }
 
             @Override
             public void onFailure(String message) {
                 if (isAdded()) {
-                    Toast.makeText(getContext(), "Error al actualizar en Firebase: " + message, Toast.LENGTH_LONG).show();
+                    Toast.makeText(getContext(), "Error al guardar en Excel: " + message, Toast.LENGTH_SHORT).show();
                 }
             }
         });

@@ -43,7 +43,7 @@ public class EditWorkerProfileFragment extends Fragment {
         mAuth = FirebaseAuth.getInstance();
 
         setupHourSpinners();
-        setupCategorySpinner(); // <<< NUEVO: Cargar categorías en el spinner
+        setupCategorySpinner();
         loadProfileData();
 
         binding.btnGuardarPerfil.setOnClickListener(v -> showConfirmationDialog());
@@ -62,14 +62,12 @@ public class EditWorkerProfileFragment extends Fragment {
         binding.spinnerHoraSalida.setAdapter(adapter);
     }
 
-    // <<< INICIO: NUEVO MÉTODO PARA CONFIGURAR EL SPINNER DE CATEGORÍAS >>>
     private void setupCategorySpinner() {
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(getContext(),
                 R.array.categorias, android.R.layout.simple_spinner_item);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         binding.spinnerCategoria.setAdapter(adapter);
     }
-    // <<< FIN: NUEVO MÉTODO >>>
 
     private void loadProfileData() {
         FirebaseUser currentUser = mAuth.getCurrentUser();
@@ -81,9 +79,30 @@ public class EditWorkerProfileFragment extends Fragment {
                     if (firebaseData != null && isAdded()) {
                         String expediente = Objects.toString(firebaseData.get("numeroExpediente"), "");
                         binding.etExpediente.setText(expediente);
-                        Map<String, Object> excelData = excelManager.findUserByExpediente(expediente);
-                        Map<String, Object> dataToUse = (excelData != null) ? excelData : firebaseData;
-                        populateFields(dataToUse);
+
+                        excelManager.findUserByExpediente(expediente, new ExcelManager.ExcelDataListener() {
+                            @Override
+                            public void onDataFound(Map<String, Object> excelData) {
+                                if (isAdded()) {
+                                    populateFields(excelData);
+                                }
+                            }
+
+                            @Override
+                            public void onDataNotFound() {
+                                if (isAdded()) {
+                                    populateFields(firebaseData);
+                                }
+                            }
+
+                            @Override
+                            public void onError(String message) {
+                                if (isAdded()) {
+                                    Toast.makeText(getContext(), "Error al cargar datos de Excel: " + message, Toast.LENGTH_SHORT).show();
+                                    populateFields(firebaseData);
+                                }
+                            }
+                        });
                     }
                 }
 
@@ -104,10 +123,8 @@ public class EditWorkerProfileFragment extends Fragment {
         binding.etApellidoPaterno.setText(nameParts.length > 1 ? nameParts[1].toUpperCase() : "");
         binding.etApellidoMaterno.setText(nameParts.length > 2 ? nameParts[2].toUpperCase() : "");
 
-        // <<< INICIO: LÓGICA ACTUALIZADA PARA EL SPINNER >>>
         String categoria = Objects.toString(data.get("categoria"), "");
         binding.spinnerCategoria.setText(categoria.toUpperCase(), false);
-        // <<< FIN: LÓGICA ACTUALIZADA >>>
 
         binding.etFechaIngreso.setText(Objects.toString(data.get("fechaIngreso"), ""));
 
@@ -119,10 +136,9 @@ public class EditWorkerProfileFragment extends Fragment {
         String nombre = binding.etNombre.getText().toString().toUpperCase().trim();
         String apellidoPaterno = binding.etApellidoPaterno.getText().toString().toUpperCase().trim();
         String expediente = binding.etExpediente.getText().toString().toUpperCase().trim();
-        String categoria = binding.spinnerCategoria.getText().toString().trim(); // <<< ACTUALIZADO
+        String categoria = binding.spinnerCategoria.getText().toString().trim();
         String fechaIngreso = binding.etFechaIngreso.getText().toString().trim();
 
-        // <<< INICIO: VALIDACIÓN MEJORADA PARA EL SPINNER >>>
         if (nombre.isEmpty() || apellidoPaterno.isEmpty() || expediente.isEmpty() || fechaIngreso.isEmpty() || categoria.isEmpty() || categoria.equalsIgnoreCase("Seleccione una categoria")) {
             Toast.makeText(getContext(), "Por favor, complete todos los campos obligatorios", Toast.LENGTH_SHORT).show();
             if (categoria.isEmpty() || categoria.equalsIgnoreCase("Seleccione una categoria")) {
@@ -130,7 +146,6 @@ public class EditWorkerProfileFragment extends Fragment {
             }
             return;
         }
-        // <<< FIN: VALIDACIÓN MEJORADA >>>
 
         if (!isValidDate(fechaIngreso)) {
             binding.etFechaIngreso.setError("Formato de fecha no válido. Use DD/MM/AAAA");
@@ -158,7 +173,7 @@ public class EditWorkerProfileFragment extends Fragment {
         String apellidoMaterno = binding.etApellidoMaterno.getText().toString().toUpperCase().trim();
         String nombreCompleto = (nombre + " " + apellidoPaterno + " " + apellidoMaterno).trim();
         String expediente = binding.etExpediente.getText().toString().toUpperCase().trim();
-        String categoria = binding.spinnerCategoria.getText().toString().toUpperCase().trim(); // <<< ACTUALIZADO
+        String categoria = binding.spinnerCategoria.getText().toString().toUpperCase().trim();
         String fechaIngreso = binding.etFechaIngreso.getText().toString().trim();
         String horarioEntrada = (String) binding.spinnerHoraEntrada.getSelectedItem();
         String horarioSalida = (String) binding.spinnerHoraSalida.getSelectedItem();
@@ -174,21 +189,31 @@ public class EditWorkerProfileFragment extends Fragment {
         userProfile.put("horarioEntrada", horarioEntrada);
         userProfile.put("horarioSalida", horarioSalida);
 
-        excelManager.saveUserData(userProfile);
-
-        databaseManager.updateWorkerProfile(userId, userProfile, new DatabaseManager.DataSaveListener() {
+        excelManager.saveUserData(userProfile, new DatabaseManager.DataSaveListener() {
             @Override
             public void onSuccess() {
-                if (isAdded() && getActivity() != null) {
-                    Toast.makeText(getContext(), "Perfil actualizado correctamente.", Toast.LENGTH_SHORT).show();
-                    getParentFragmentManager().popBackStack();
-                }
+                databaseManager.updateWorkerProfile(userId, userProfile, new DatabaseManager.DataSaveListener() {
+                    @Override
+                    public void onSuccess() {
+                        if (isAdded() && getActivity() != null) {
+                            Toast.makeText(getContext(), "Perfil actualizado correctamente.", Toast.LENGTH_SHORT).show();
+                            getParentFragmentManager().popBackStack();
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(String message) {
+                        if (isAdded()) {
+                            Toast.makeText(getContext(), "Error al actualizar en Firebase: " + message, Toast.LENGTH_LONG).show();
+                        }
+                    }
+                });
             }
 
             @Override
             public void onFailure(String message) {
                 if (isAdded()) {
-                    Toast.makeText(getContext(), "Error al actualizar en Firebase: " + message, Toast.LENGTH_LONG).show();
+                    Toast.makeText(getContext(), "Error al guardar en Excel: " + message, Toast.LENGTH_SHORT).show();
                 }
             }
         });
@@ -225,4 +250,3 @@ public class EditWorkerProfileFragment extends Fragment {
         binding = null;
     }
 }
-

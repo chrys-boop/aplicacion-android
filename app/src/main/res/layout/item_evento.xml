@@ -38,6 +38,52 @@
                 android:text="Breve descripción de lo que hay que hacer."
                 android:textSize="14sp"
                 android:textColor="@android:color/darker_gray" />
+
+            <!-- Contenedor para las fechas -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="8dp">
+
+                <!-- Fecha del Evento -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Fecha del evento: "
+                        android:textSize="12sp"
+                        android:textStyle="bold"/>
+                    <TextView
+                        android:id="@+id/tv_event_date"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="YYYY-MM-DD"
+                        android:textSize="12sp"/>
+                </LinearLayout>
+
+                <!-- Fecha de Creación -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Creado: "
+                        android:textSize="12sp"
+                        android:textStyle="bold"/>
+                    <TextView
+                        android:id="@+id/tv_creation_date"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="YYYY-MM-DD HH:mm"
+                        android:textSize="12sp"/>
+                </LinearLayout>
+            </LinearLayout>
         </LinearLayout>
 
         <com.google.android.material.button.MaterialButton

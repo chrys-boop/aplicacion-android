@@ -31,7 +31,7 @@ public class EditProfileFragment extends Fragment {
 
     private EditText etNombre, etApellidoPaterno, etApellidoMaterno, etExpediente, etArea, etCargo, etFechaIngreso;
     private Spinner spinnerTitularType, spinnerHoraEntrada, spinnerHoraSalida;
-    private AutoCompleteTextView spinnerCategoria; // <<< NUEVO
+    private AutoCompleteTextView spinnerCategoria;
     private Button btnGuardar;
     private DatabaseManager databaseManager;
     private ExcelManager excelManager;
@@ -62,7 +62,7 @@ public class EditProfileFragment extends Fragment {
         spinnerTitularType = view.findViewById(R.id.spinner_titular_type);
         spinnerHoraEntrada = view.findViewById(R.id.spinner_hora_entrada);
         spinnerHoraSalida = view.findViewById(R.id.spinner_hora_salida);
-        spinnerCategoria = view.findViewById(R.id.spinner_categoria); // <<< NUEVO
+        spinnerCategoria = view.findViewById(R.id.spinner_categoria);
         btnGuardar = view.findViewById(R.id.btn_guardar_perfil);
 
         setupSpinners();
@@ -78,20 +78,16 @@ public class EditProfileFragment extends Fragment {
     }
 
     private void setupSpinners() {
-        // Spinner for Titular Type
         ArrayAdapter<CharSequence> titularAdapter = ArrayAdapter.createFromResource(getContext(),
                 R.array.titular_options, android.R.layout.simple_spinner_item);
         titularAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerTitularType.setAdapter(titularAdapter);
 
-        // <<< INICIO: LÓGICA PARA EL NUEVO SPINNER DE CATEGORÍA >>>
         ArrayAdapter<CharSequence> categoryAdapter = ArrayAdapter.createFromResource(getContext(),
                 R.array.categorias, android.R.layout.simple_spinner_item);
         categoryAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerCategoria.setAdapter(categoryAdapter);
-        // <<< FIN: LÓGICA PARA EL NUEVO SPINNER DE CATEGORÍA >>>
 
-        // Spinners for Hours
         List<String> hours = new ArrayList<>();
         for (int i = 0; i < 24; i++) {
             hours.add(String.format("%02d:00", i));
@@ -112,11 +108,33 @@ public class EditProfileFragment extends Fragment {
                     if (firebaseData != null && isAdded()) {
                         String expediente = Objects.toString(firebaseData.get("numeroExpediente"), "");
                         etExpediente.setText(expediente);
-                        Map<String, Object> excelData = excelManager.findUserByExpediente(expediente);
-                        Map<String, Object> dataToUse = (excelData != null) ? excelData : firebaseData;
-                        populateFields(dataToUse);
+
+                        excelManager.findUserByExpediente(expediente, new ExcelManager.ExcelDataListener() {
+                            @Override
+                            public void onDataFound(Map<String, Object> excelData) {
+                                if (isAdded()) {
+                                    populateFields(excelData);
+                                }
+                            }
+
+                            @Override
+                            public void onDataNotFound() {
+                                if (isAdded()) {
+                                    populateFields(firebaseData);
+                                }
+                            }
+
+                            @Override
+                            public void onError(String message) {
+                                if (isAdded()) {
+                                    Toast.makeText(getContext(), "Error al cargar datos de Excel: " + message, Toast.LENGTH_SHORT).show();
+                                    populateFields(firebaseData); // Fallback to Firebase data
+                                }
+                            }
+                        });
                     }
                 }
+
                 @Override
                 public void onDataCancelled(String message) {
                     if (isAdded()) {
@@ -136,7 +154,7 @@ public class EditProfileFragment extends Fragment {
 
         etArea.setText(Objects.toString(data.get("area"), "").toUpperCase());
         etCargo.setText(Objects.toString(data.get("cargo"), "").toUpperCase());
-        spinnerCategoria.setText(Objects.toString(data.get("categoria"), ""), false); // <<< NUEVO
+        spinnerCategoria.setText(Objects.toString(data.get("categoria"), ""), false);
         etFechaIngreso.setText(Objects.toString(data.get("fechaIngreso"), ""));
 
         setSpinnerSelection(spinnerTitularType, Objects.toString(data.get("titularType"), ""));
@@ -148,7 +166,7 @@ public class EditProfileFragment extends Fragment {
         String nombre = etNombre.getText().toString().toUpperCase().trim();
         String apellidoPaterno = etApellidoPaterno.getText().toString().toUpperCase().trim();
         String expediente = etExpediente.getText().toString().toUpperCase().trim();
-        String categoria = spinnerCategoria.getText().toString().trim(); // <<< NUEVO
+        String categoria = spinnerCategoria.getText().toString().trim();
         String fechaIngreso = etFechaIngreso.getText().toString().trim();
 
         if (nombre.isEmpty() || apellidoPaterno.isEmpty() || expediente.isEmpty() || fechaIngreso.isEmpty() || categoria.isEmpty() || categoria.equalsIgnoreCase("Seleccione una categoria")) {
@@ -179,7 +197,7 @@ public class EditProfileFragment extends Fragment {
         String expediente = etExpediente.getText().toString().toUpperCase().trim();
         String area = etArea.getText().toString().toUpperCase().trim();
         String cargo = etCargo.getText().toString().toUpperCase().trim();
-        String categoria = spinnerCategoria.getText().toString().toUpperCase().trim(); // <<< NUEVO
+        String categoria = spinnerCategoria.getText().toString().toUpperCase().trim();
         String fechaIngreso = etFechaIngreso.getText().toString().trim();
         String titularType = spinnerTitularType.getSelectedItem().toString();
         String horaEntrada = spinnerHoraEntrada.getSelectedItem().toString();
@@ -201,7 +219,7 @@ public class EditProfileFragment extends Fragment {
             userData.put("numeroExpediente", expediente);
             userData.put("area", area);
             userData.put("cargo", cargo);
-            userData.put("categoria", categoria); // <<< NUEVO
+            userData.put("categoria", categoria);
             userData.put("titularType", titularType);
             userData.put("fechaIngreso", fechaIngreso);
             userData.put("horarioEntrada", horaEntrada);
@@ -210,21 +228,32 @@ public class EditProfileFragment extends Fragment {
             userData.put("apellidoPaterno", apellidoPaterno);
             userData.put("apellidoMaterno", apellidoMaterno);
 
-            excelManager.saveUserData(userData);
-
-            databaseManager.updateWorkerProfile(userId, userData, new DatabaseManager.DataSaveListener() {
+            excelManager.saveUserData(userData, new DatabaseManager.DataSaveListener() {
                 @Override
                 public void onSuccess() {
-                    if (isAdded() && getActivity() != null) {
-                        Toast.makeText(getContext(), "Perfil actualizado correctamente.", Toast.LENGTH_SHORT).show();
-                        getParentFragmentManager().popBackStack();
-                    }
+                    // Data now in Excel, proceed to update Firebase
+                    databaseManager.updateWorkerProfile(userId, userData, new DatabaseManager.DataSaveListener() {
+                        @Override
+                        public void onSuccess() {
+                            if (isAdded() && getActivity() != null) {
+                                Toast.makeText(getContext(), "Perfil actualizado correctamente.", Toast.LENGTH_SHORT).show();
+                                getParentFragmentManager().popBackStack();
+                            }
+                        }
+
+                        @Override
+                        public void onFailure(String message) {
+                            if (isAdded()) {
+                                Toast.makeText(getContext(), "Error al actualizar en Firebase: " + message, Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                    });
                 }
 
                 @Override
                 public void onFailure(String message) {
                     if (isAdded()) {
-                        Toast.makeText(getContext(), "Error al actualizar en Firebase: " + message, Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getContext(), "Error al guardar en Excel: " + message, Toast.LENGTH_SHORT).show();
                     }
                 }
             });

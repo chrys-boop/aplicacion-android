@@ -23,6 +23,8 @@ public class Personal_Administrativo extends AppCompatActivity {
     private static final String TAG ="PersonalAdmin";
     // Se elimina la constante FRAGMENT_CONTAINER_ID
     private final Fragment workerActivityHistoryFragment = new WorkerActivityHistoryFragment();
+    // --- NUEVO: Instancia del fragmento de historial de eventos ---
+    private final Fragment eventListFragment = new EventListFragment();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,6 +65,8 @@ public class Personal_Administrativo extends AppCompatActivity {
                 return loadFragment(new CalendarFragment(), true);
             } else if (itemId == R.id.nav_documentos) {
                 return loadFragment(new AdminTrackingFragment(), true);
+            }else if (itemId == R.id.nav_event_history) { // --- AÑADIDO: Manejo del historial de eventos ---
+                return loadFragment(eventListFragment, true);
             }
             return false;
         });

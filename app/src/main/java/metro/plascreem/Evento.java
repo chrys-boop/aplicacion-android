@@ -4,7 +4,6 @@ import android.os.Parcel;
 import android.os.Parcelable;
 
 public class Evento implements Parcelable {
-    // Constantes: Etiquetas para clasificar el evento
     public static final String TIPO_DOCUMENTO = "DOCUMENTO";
     public static final String TIPO_MEDIA = "MEDIA";
     public static final String TIPO_SIMPLE = "SIMPLE";
@@ -14,8 +13,8 @@ public class Evento implements Parcelable {
     private String descripcion;
     private String fecha;
     private String tipoAccion;
+    private long creationTimestamp; // Nuevo campo
 
-    // Constructor vacío requerido para Firebase
     public Evento() {}
 
     public Evento(String id, String titulo, String descripcion, String fecha, String tipoAccion) {
@@ -24,6 +23,7 @@ public class Evento implements Parcelable {
         this.descripcion = descripcion;
         this.fecha = fecha;
         this.tipoAccion = tipoAccion;
+        // creationTimestamp se establecerá desde Firebase
     }
 
     // --- Getters ---
@@ -32,11 +32,11 @@ public class Evento implements Parcelable {
     public String getDescripcion() { return descripcion; }
     public String getTipoAccion() { return tipoAccion; }
     public String getFecha() { return fecha; }
+    public long getCreationTimestamp() { return creationTimestamp; } // Nuevo getter
 
-    // --- Setter ---
-    public void setId(String id) {
-        this.id = id;
-    }
+    // --- Setters ---
+    public void setId(String id) { this.id = id; }
+    public void setCreationTimestamp(long creationTimestamp) { this.creationTimestamp = creationTimestamp; } // Nuevo setter
 
     // --- Implementación de Parcelable ---
 
@@ -46,6 +46,7 @@ public class Evento implements Parcelable {
         descripcion = in.readString();
         fecha = in.readString();
         tipoAccion = in.readString();
+        creationTimestamp = in.readLong(); // Leer el nuevo campo
     }
 
     @Override
@@ -55,6 +56,7 @@ public class Evento implements Parcelable {
         dest.writeString(descripcion);
         dest.writeString(fecha);
         dest.writeString(tipoAccion);
+        dest.writeLong(creationTimestamp); // Escribir el nuevo campo
     }
 
     @Override
@@ -74,3 +76,4 @@ public class Evento implements Parcelable {
         }
     };
 }
+

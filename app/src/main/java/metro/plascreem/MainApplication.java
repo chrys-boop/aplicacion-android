@@ -15,6 +15,10 @@ public class MainApplication extends Application {
     public void onCreate() {
         super.onCreate();
 
+        // --- INICIALIZACIÓN TEMPRANA DE SUPABASE EN EL HILO PRINCIPAL ---
+        // Esto es crucial para evitar el error "addObserver must be called on the main thread"
+        SupabaseManager.init();
+
         // Carga la preferencia del tema guardada
         SharedPreferences settingsPrefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
 

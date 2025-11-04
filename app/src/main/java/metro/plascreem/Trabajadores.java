@@ -97,34 +97,60 @@ public class Trabajadores extends AppCompatActivity {
             databaseManager.getUserDataMap(userId, new DatabaseManager.UserDataMapListener() {
                 @Override
                 public void onDataReceived(Map<String, Object> firebaseData) {
-                    if (firebaseData != null) {
-                        binding.tvWorkerName.setText(Objects.toString(firebaseData.get("nombreCompleto"), "NOMBRE NO DISPONIBLE").toUpperCase());
-
-                        String expediente = Objects.toString(firebaseData.get("numeroExpediente"), "");
-                        Map<String, Object> excelData = excelManager.findUserByExpediente(expediente);
-
-                        Map<String, Object> dataToUse = (excelData != null) ? excelData : firebaseData;
-
-                        String categoria = Objects.toString(dataToUse.get("categoria"), "N/A");
-                        if (categoria.isEmpty()) categoria = "N/A";
-
-                        String fechaIngreso = Objects.toString(dataToUse.get("fechaIngreso"), "N/A");
-                        if (fechaIngreso.isEmpty()) fechaIngreso = "N/A";
-
-                        String horarioEntrada = Objects.toString(dataToUse.get("horarioEntrada"), "N/A");
-                        if (horarioEntrada.isEmpty()) horarioEntrada = "N/A";
-
-                        String horarioSalida = Objects.toString(dataToUse.get("horarioSalida"), "N/A");
-                        if (horarioSalida.isEmpty()) horarioSalida = "N/A";
-
-                        String displayExpediente = Objects.toString(firebaseData.get("numeroExpediente"), "N/A");
-
-                        String workerDetails = "EXPEDIENTE: " + displayExpediente + "\n" +
-                                "CATEGORÍA: " + categoria + "\n" +
-                                "FECHA DE INGRESO: " + fechaIngreso + "\n" +
-                                "HORARIO: " + horarioEntrada + " - " + horarioSalida;
-                        binding.tvWorkerExpediente.setText(workerDetails.toUpperCase());
+                    if (firebaseData == null) {
+                        Toast.makeText(Trabajadores.this, "No se pudieron cargar los datos del usuario.", Toast.LENGTH_SHORT).show();
+                        return;
                     }
+
+                    binding.tvWorkerName.setText(Objects.toString(firebaseData.get("nombreCompleto"), "NOMBRE NO DISPONIBLE").toUpperCase());
+                    String displayExpediente = Objects.toString(firebaseData.get("numeroExpediente"), "N/A");
+                    String expediente = Objects.toString(firebaseData.get("numeroExpediente"), "");
+
+                    if (expediente.isEmpty()) {
+                        String workerDetails = "EXPEDIENTE: " + displayExpediente + "\n" +
+                                "CATEGORÍA: N/A\n" +
+                                "FECHA DE INGRESO: N/A\n" +
+                                "HORARIO: N/A - N/A";
+                        binding.tvWorkerExpediente.setText(workerDetails.toUpperCase());
+                        return;
+                    }
+
+                    excelManager.findUserByExpediente(expediente, new ExcelManager.ExcelDataListener() {
+                        @Override
+                        public void onDataFound(Map<String, Object> excelData) {
+                            String categoria = Objects.toString(excelData.get("categoria"), "N/A");
+                            String fechaIngreso = Objects.toString(excelData.get("fechaIngreso"), "N/A");
+                            String horarioEntrada = Objects.toString(excelData.get("horarioEntrada"), "N/A");
+                            String horarioSalida = Objects.toString(excelData.get("horarioSalida"), "N/A");
+
+                            String workerDetails = "EXPEDIENTE: " + displayExpediente + "\n" +
+                                    "CATEGORÍA: " + categoria + "\n" +
+                                    "FECHA DE INGRESO: " + fechaIngreso + "\n" +
+                                    "HORARIO: " + horarioEntrada + " - " + horarioSalida;
+                            binding.tvWorkerExpediente.setText(workerDetails.toUpperCase());
+                        }
+
+                        @Override
+                        public void onDataNotFound() {
+                            Log.w(TAG, "No se encontraron datos en Excel para el expediente: " + expediente);
+                            String workerDetails = "EXPEDIENTE: " + displayExpediente + "\n" +
+                                    "CATEGORÍA: N/A\n" +
+                                    "FECHA DE INGRESO: N/A\n" +
+                                    "HORARIO: N/A - N/A";
+                            binding.tvWorkerExpediente.setText(workerDetails.toUpperCase());
+                        }
+
+                        // --- MÉTODO OnError CORREGIDO ---
+                        @Override
+                        public void onError(String message) {
+                            Log.e(TAG, "Error al leer archivo Excel: " + message);
+                            String workerDetails = "EXPEDIENTE: " + displayExpediente + "\n" +
+                                    "CATEGORÍA: (Error)\n" +
+                                    "FECHA DE INGRESO: (Error)\n" +
+                                    "HORARIO: (Error)";
+                            binding.tvWorkerExpediente.setText(workerDetails.toUpperCase());
+                        }
+                    });
                 }
 
                 @Override
@@ -159,5 +185,3 @@ public class Trabajadores extends AppCompatActivity {
                 });
     }
 }
-
-

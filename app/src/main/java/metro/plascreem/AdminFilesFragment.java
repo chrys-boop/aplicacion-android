@@ -31,17 +31,15 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
-import com.google.firebase.storage.FirebaseStorage;
-import com.google.firebase.storage.StorageReference;
 
 import java.util.ArrayList;
 import java.util.List;
 
-// Se implementa directamente la interfaz actualizada
 public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileActionListener {
 
     private static final String TAG = "AdminFilesFragment";
-    private static final String DATABASE_PATH = "files"; // Se recomienda un nombre más genérico
+    private static final String DATABASE_PATH = "files"; // Ruta en Firebase Realtime DB
+    private static final String STORAGE_FOLDER = "plantillas"; // Carpeta en Supabase
 
     private Button btnSelectFile, btnUploadFile;
     private TextView tvFileNameStatus;
@@ -51,7 +49,6 @@ public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileAc
     private Uri selectedFileUri;
     private String selectedFileName;
 
-    private StorageReference storageReference;
     private DatabaseReference databaseReference;
     private FileAdapter fileAdapter;
     private final List<FileMetadata> fileList = new ArrayList<>();
@@ -72,8 +69,7 @@ public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileAc
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_admin_files, container, false);
 
-        storageReference = FirebaseStorage.getInstance().getReference(DATABASE_PATH);
-        // Usar la URL correcta de la base de datos
+        // Ya no se necesita Firebase Storage, solo la base de datos para metadatos
         databaseReference = FirebaseDatabase.getInstance("https://capacitacion-material-default-rtdb.firebaseio.com/").getReference(DATABASE_PATH);
 
         btnSelectFile = view.findViewById(R.id.btn_select_file);
@@ -84,19 +80,17 @@ public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileAc
         recyclerViewFiles = view.findViewById(R.id.recycler_view_files);
 
         recyclerViewFiles.setLayoutManager(new LinearLayoutManager(getContext()));
-        // 'this' es el listener porque la clase implementa la interfaz
-        fileAdapter = new FileAdapter(fileList, this, true); // true -> mostrar botón de borrado
+        fileAdapter = new FileAdapter(fileList, this, true);
         recyclerViewFiles.setAdapter(fileAdapter);
 
         btnSelectFile.setOnClickListener(v -> openFilePicker());
-        btnUploadFile.setOnClickListener(v -> uploadFile());
+        btnUploadFile.setOnClickListener(v -> uploadFileToSupabase()); // Cambiado a m\u00e9todo de Supabase
 
         loadFilesFromDatabase();
 
         return view;
     }
 
-    // ... (otros métodos como openFilePicker, uploadFile, etc. se mantienen igual)
     private void openFilePicker() {
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
         intent.setType("application/pdf");
@@ -104,7 +98,8 @@ public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileAc
         filePickerLauncher.launch(intent);
     }
 
-    private void uploadFile() {
+    // --- M\u00c9TODO DE SUBIDA ACTUALIZADO PARA USAR SUPABASE ---
+    private void uploadFileToSupabase() {
         if (selectedFileUri == null || selectedFileName == null) {
             Toast.makeText(getContext(), "Por favor, seleccione un archivo primero", Toast.LENGTH_SHORT).show();
             return;
@@ -112,47 +107,52 @@ public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileAc
 
         progressBarUpload.setVisibility(View.VISIBLE);
         btnUploadFile.setEnabled(false);
+        tvFileNameStatus.setText("Subiendo " + selectedFileName + "...");
 
-        StorageReference fileRef = storageReference.child(selectedFileName);
+        String storagePath = STORAGE_FOLDER + "/" + selectedFileName;
 
-        fileRef.putFile(selectedFileUri)
-                .addOnSuccessListener(taskSnapshot -> fileRef.getDownloadUrl().addOnSuccessListener(uri -> {
-                    Toast.makeText(getContext(), "Archivo subido con éxito", Toast.LENGTH_SHORT).show();
+        SupabaseManager.uploadFile(getContext(), selectedFileUri, storagePath, new SupabaseUploadListener() {
+            @Override
+            public void onSuccess(String publicUrl) {
+                Toast.makeText(getContext(), "Archivo subido con \u00e9xito", Toast.LENGTH_SHORT).show();
 
-                    long size = taskSnapshot.getMetadata() != null ? taskSnapshot.getMetadata().getSizeBytes() : 0;
-                    String fileId = databaseReference.push().getKey();
+                String fileId = databaseReference.push().getKey();
 
-                    FileMetadata metadata = new FileMetadata(
-                            fileId,
-                            selectedFileName,
-                            uri.toString(),
-                            fileRef.getPath(), // Guardar el storage path
-                            null,
-                            size,
-                            System.currentTimeMillis()
-                    );
+                // Creamos los metadatos con la informaci\u00f3n de Supabase
+                FileMetadata metadata = new FileMetadata(
+                        fileId,
+                        selectedFileName,
+                        publicUrl, // La URL p\u00fablica de Supabase
+                        storagePath, // La ruta de almacenamiento en Supabase
+                        null, // userId, no aplica para archivos de admin
+                        0,    // size, se puede a\u00f1adir luego si es necesario
+                        System.currentTimeMillis()
+                );
 
-                    if (fileId != null) {
-                        databaseReference.child(fileId).setValue(metadata);
-                    }
-                    resetUploadUI();
-                }))
-                .addOnFailureListener(e -> {
-                    Toast.makeText(getContext(), "Error al subir el archivo: " + e.getMessage(), Toast.LENGTH_LONG).show();
-                    resetUploadUI();
-                })
-                .addOnProgressListener(snapshot -> {
-                    double progress = (100.0 * snapshot.getBytesTransferred()) / snapshot.getTotalByteCount();
-                    progressBarUpload.setProgress((int) progress);
-                });
+                if (fileId != null) {
+                    databaseReference.child(fileId).setValue(metadata)
+                            .addOnSuccessListener(aVoid -> resetUploadUI())
+                            .addOnFailureListener(e -> {
+                                Toast.makeText(getContext(), "Error al guardar en DB: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                                resetUploadUI();
+                            });
+                }
+            }
+
+            @Override
+            public void onFailure(String message) {
+                Toast.makeText(getContext(), "Error al subir el archivo: " + message, Toast.LENGTH_LONG).show();
+                resetUploadUI();
+            }
+        });
     }
+
     private void resetUploadUI() {
         selectedFileUri = null;
         selectedFileName = null;
         progressBarUpload.setVisibility(View.GONE);
-        progressBarUpload.setProgress(0);
         btnUploadFile.setEnabled(false);
-        tvFileNameStatus.setText("Ningún archivo seleccionado");
+        tvFileNameStatus.setText("Ning\u00fan archivo seleccionado");
     }
 
     private void loadFilesFromDatabase() {
@@ -180,29 +180,26 @@ public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileAc
         });
     }
 
-    // --- Implementación de los métodos de la interfaz ---
-
     @Override
     public void onViewFile(FileMetadata file) {
+        // Esta funci\u00f3n ya funciona con cualquier URL p\u00fablica
         if (file.getDownloadUrl() == null || file.getDownloadUrl().isEmpty()) {
-            Toast.makeText(getContext(), R.string.error_file_url_missing, Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), "URL del archivo no disponible.", Toast.LENGTH_SHORT).show();
             return;
         }
-        Intent intent = new Intent(Intent.ACTION_VIEW);
-        intent.setDataAndType(Uri.parse(file.getDownloadUrl()), "application/pdf");
-        intent.setFlags(Intent.FLAG_ACTIVITY_NO_HISTORY);
-
+        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(file.getDownloadUrl()));
         try {
             startActivity(intent);
         } catch (android.content.ActivityNotFoundException e) {
-            Toast.makeText(getContext(), R.string.error_no_app_to_open_file, Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), "No se encontro una aplicaci\u00f3n para abrir este tipo de archivo.", Toast.LENGTH_SHORT).show();
         }
     }
 
     @Override
     public void onDownloadFile(FileMetadata file) {
-        if (file.getDownloadUrl() == null || file.getDownloadUrl().isEmpty()) {
-            Toast.makeText(getContext(), R.string.error_file_url_missing, Toast.LENGTH_SHORT).show();
+        // Esta funci\u00f3n ya funciona con cualquier URL p\u00fablica
+        if (getContext() == null || file.getDownloadUrl() == null || file.getDownloadUrl().isEmpty()) {
+            Toast.makeText(getContext(), "No se puede iniciar la descarga.", Toast.LENGTH_SHORT).show();
             return;
         }
         DownloadManager.Request request = new DownloadManager.Request(Uri.parse(file.getDownloadUrl()));
@@ -214,31 +211,39 @@ public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileAc
         DownloadManager downloadManager = (DownloadManager) getContext().getSystemService(Context.DOWNLOAD_SERVICE);
         if (downloadManager != null) {
             downloadManager.enqueue(request);
-            Toast.makeText(getContext(), R.string.download_started, Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), "Descarga iniciada...", Toast.LENGTH_SHORT).show();
         } else {
-            Toast.makeText(getContext(), R.string.download_failed, Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), "Error al iniciar el servicio de descarga.", Toast.LENGTH_SHORT).show();
         }
     }
 
+    // --- M\u00c9TODO DE BORRADO ACTUALIZADO PARA USAR SUPABASE ---
     @Override
     public void onDeleteFile(FileMetadata file) {
-        if (file.getFileId() == null || file.getStoragePath() == null) {
+        if (file.getFileId() == null || file.getStoragePath() == null || file.getStoragePath().isEmpty()) {
             Toast.makeText(getContext(), "Metadatos del archivo incompletos. No se puede eliminar.", Toast.LENGTH_LONG).show();
             return;
         }
 
         new AlertDialog.Builder(requireContext())
-                .setTitle("Confirmar Eliminación")
-                .setMessage("¿Estás seguro de que quieres eliminar '" + file.getFileName() + "'?")
+                .setTitle("Confirmar Eliminaci\u00f3n")
+                .setMessage("\u00bfEst\u00e1s seguro de que quieres eliminar '" + file.getFileName() + "'?")
                 .setPositiveButton("Eliminar", (dialog, which) -> {
+                    // PRIMERO: Borrar de Supabase Storage usando el path guardado
+                    SupabaseManager.deleteFile(file.getStoragePath(), new SupabaseDeleteListener() {
+                        @Override
+                        public void onSuccess() {
+                            // SEGUNDO: Si se borra de Supabase, borrar el registro de Firebase DB
+                            databaseReference.child(file.getFileId()).removeValue()
+                                    .addOnSuccessListener(aVoid -> Toast.makeText(getContext(), "Archivo eliminado.", Toast.LENGTH_SHORT).show())
+                                    .addOnFailureListener(e -> Toast.makeText(getContext(), "Error al eliminar de la base de datos.", Toast.LENGTH_SHORT).show());
+                        }
 
-                    StorageReference fileRefToDelete = FirebaseStorage.getInstance().getReferenceFromUrl(file.getDownloadUrl());
-
-                    fileRefToDelete.delete().addOnSuccessListener(aVoid -> {
-                        databaseReference.child(file.getFileId()).removeValue()
-                                .addOnSuccessListener(bVoid -> Toast.makeText(getContext(), "Archivo eliminado.", Toast.LENGTH_SHORT).show())
-                                .addOnFailureListener(e -> Toast.makeText(getContext(), "Error al eliminar de la base de datos.", Toast.LENGTH_SHORT).show());
-                    }).addOnFailureListener(e -> Toast.makeText(getContext(), "Error al eliminar de Storage.", Toast.LENGTH_SHORT).show());
+                        @Override
+                        public void onFailure(String message) {
+                            Toast.makeText(getContext(), "Error al eliminar de Storage: " + message, Toast.LENGTH_SHORT).show();
+                        }
+                    });
                 })
                 .setNegativeButton("Cancelar", null)
                 .show();

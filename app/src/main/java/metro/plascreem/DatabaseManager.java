@@ -1,6 +1,4 @@
-
 package metro.plascreem;
-
 import android.content.Context;
 import android.net.Uri;
 import android.util.Log;
@@ -19,6 +17,7 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.Query;
+import com.google.firebase.database.ServerValue;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
@@ -112,7 +111,7 @@ public class DatabaseManager {
                         userData.put("nombreCompleto", fullName);
                         userData.put("numeroExpediente", expediente);
                         userData.put("lastConnection", System.currentTimeMillis());
-                        userData.put("policyAccepted", false); // Nuevo campo inicializado en false
+                        userData.put("policyAccepted", false);
 
                         mDatabase.child("users").child(userId).setValue(userData)
                                 .addOnCompleteListener(dbTask -> {
@@ -126,7 +125,6 @@ public class DatabaseManager {
                 });
     }
 
-    // Nuevo método para marcar la aceptación de políticas
     public void setUserPolicyAcceptance(String email, boolean accepted, AuthListener listener) {
         Query userQuery = mDatabase.child("users").orderByChild("email").equalTo(email);
         userQuery.addListenerForSingleValueEvent(new ValueEventListener() {
@@ -139,7 +137,7 @@ public class DatabaseManager {
                             mDatabase.child("users").child(userId).child("policyAccepted").setValue(accepted)
                                     .addOnSuccessListener(aVoid -> listener.onSuccess())
                                     .addOnFailureListener(e -> listener.onFailure(e.getMessage()));
-                            return; // Salir después de encontrar y actualizar al usuario
+                            return;
                         }
                     }
                 } else {
@@ -211,7 +209,6 @@ public class DatabaseManager {
             }
         });
     }
-    // --- NUEVO MÉTODO PARA OBTENER TODOS LOS USUARIOS (con DataCallback) ---
     public void getAllUsers(final DataCallback<List<User>> callback) {
         mDatabase.child("users").addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
@@ -343,14 +340,12 @@ public class DatabaseManager {
                 });
     }
 
-    // *** INICIO DE LA CORRECCIÓN ***
     public void sendDirectMessage(String senderId, String recipientId, String messageContent, @NonNull final DataSaveListener listener) {
         if (senderId == null || recipientId == null || messageContent == null || messageContent.trim().isEmpty()) {
             listener.onFailure("Los IDs de usuario y el mensaje no pueden ser nulos o vacíos.");
             return;
         }
 
-        // Crear una ID de chat única y consistente para ambos usuarios
         String chatId;
         if (senderId.compareTo(recipientId) > 0) {
             chatId = senderId + "_" + recipientId;
@@ -366,22 +361,19 @@ public class DatabaseManager {
             return;
         }
 
-        // Se crea un objeto DirectMessage completo para asegurar la consistencia de los datos
         DirectMessage directMessage = new DirectMessage(
                 messageId,
                 senderId,
                 recipientId,
-                messageContent, // Contenido del mensaje
-                "message",      // Tipo del mensaje
+                messageContent,
+                "message",
                 System.currentTimeMillis()
         );
 
-        // Se guarda el objeto completo en la base de datos
         messageRef.setValue(directMessage)
                 .addOnSuccessListener(aVoid -> listener.onSuccess())
                 .addOnFailureListener(e -> listener.onFailure(e.getMessage()));
     }
-    // *** FIN DE LA CORRECCIÓN ***
 
     public void logDownloadEvent(String userId, String userName, String fileName, @NonNull final DataSaveListener listener) {
         if (userId == null || userId.isEmpty() || fileName == null || fileName.isEmpty()) {
@@ -412,7 +404,6 @@ public class DatabaseManager {
                 });
     }
 
-    // --- NUEVO MÉTODO PARA REGISTRAR DESCARGAS CON REALTIME DATABASE ---
     public void registrarDescargaArchivo(HistoricoArchivo historico, DataSaveListener listener) {
         String key = mDatabase.child("file_download_history").push().getKey();
         if (key == null) {
@@ -431,7 +422,6 @@ public class DatabaseManager {
                 });
     }
 
-    // --- MÉTODO ACTUALIZADO --- //
     public void updateUserProfile(String userId, String fullName, String email, String expediente, String taller, String enlaceOrigen, String horario, String area, String titular, DataSaveListener listener) {
         Map<String, Object> updatedData = new HashMap<>();
         updatedData.put("nombreCompleto", fullName);
@@ -440,21 +430,21 @@ public class DatabaseManager {
         updatedData.put("taller", taller);
         updatedData.put("enlaceOrigen", enlaceOrigen);
         updatedData.put("horario", horario);
-        updatedData.put("area", area); // Añadido
-        updatedData.put("titular", titular); // Añadido
+        updatedData.put("area", area);
+        updatedData.put("titular", titular);
 
         mDatabase.child("users").child(userId).updateChildren(updatedData)
                 .addOnSuccessListener(aVoid -> listener.onSuccess())
                 .addOnFailureListener(e -> listener.onFailure(e.getMessage()));
     }
 
-    // --- NUEVO MÉTODO PARA EL PERFIL DEL TRABAJADOR ---
     public void updateWorkerProfile(String userId, Map<String, Object> workerProfile, DataSaveListener listener) {
         mDatabase.child("users").child(userId).updateChildren(workerProfile)
-                        .addOnSuccessListener(aVoid -> listener.onSuccess())
-                        .addOnFailureListener(e -> listener.onFailure(e.getMessage()));
+                .addOnSuccessListener(aVoid -> listener.onSuccess())
+                .addOnFailureListener(e -> listener.onFailure(e.getMessage()));
     }
 
+    // --- MODIFICADO: getEventsForDate ---
     public void getEventsForDate(String date, EventsListener listener) {
         mDatabase.child("events").orderByChild("fecha").equalTo(date).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
@@ -464,6 +454,10 @@ public class DatabaseManager {
                     Evento event = eventSnapshot.getValue(Evento.class);
                     if (event != null) {
                         event.setId(eventSnapshot.getKey());
+                        // Recuperar el timestamp de creación
+                        if (eventSnapshot.hasChild("creationTimestamp")) {
+                            event.setCreationTimestamp((Long) eventSnapshot.child("creationTimestamp").getValue());
+                        }
                         events.add(event);
                     }
                 }
@@ -477,6 +471,7 @@ public class DatabaseManager {
         });
     }
 
+    // --- MODIFICADO: getAllEvents ---
     public void getAllEvents(EventsListener listener) {
         mDatabase.child("events").addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
@@ -486,6 +481,10 @@ public class DatabaseManager {
                     Evento event = eventSnapshot.getValue(Evento.class);
                     if (event != null) {
                         event.setId(eventSnapshot.getKey());
+                        // Recuperar el timestamp de creación
+                        if (eventSnapshot.hasChild("creationTimestamp")) {
+                            event.setCreationTimestamp((Long) eventSnapshot.child("creationTimestamp").getValue());
+                        }
                         events.add(event);
                     }
                 }
@@ -499,6 +498,7 @@ public class DatabaseManager {
         });
     }
 
+    // --- MODIFICADO: saveEvent ---
     public void saveEvent(Evento event, DataSaveListener listener) {
         String eventId = event.getId();
         if (eventId == null || eventId.isEmpty()) {
@@ -507,7 +507,15 @@ public class DatabaseManager {
         }
 
         if (eventId != null) {
-            mDatabase.child("events").child(eventId).setValue(event)
+            Map<String, Object> eventValues = new HashMap<>();
+            eventValues.put("id", event.getId());
+            eventValues.put("titulo", event.getTitulo());
+            eventValues.put("descripcion", event.getDescripcion());
+            eventValues.put("fecha", event.getFecha());
+            eventValues.put("tipoAccion", event.getTipoAccion());
+            eventValues.put("creationTimestamp", ServerValue.TIMESTAMP); // Añadir el timestamp del servidor
+
+            mDatabase.child("events").child(eventId).setValue(eventValues)
                     .addOnSuccessListener(aVoid -> listener.onSuccess())
                     .addOnFailureListener(e -> listener.onFailure(e.getMessage()));
         } else {
@@ -562,7 +570,6 @@ public class DatabaseManager {
 
         requestQueue.add(jsonObjectRequest);
     }
-    // Este método es seguro para que lo use el propio usuario logueado.
     public void setUserPolicyAcceptanceByUid(String userId, boolean accepted, AuthListener listener) {
         if (userId == null || userId.isEmpty()) {
             listener.onFailure("ID de usuario inválido.");
