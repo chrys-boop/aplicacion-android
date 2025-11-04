@@ -274,37 +274,34 @@ public class DatabaseManager {
     }
 
     public void uploadFile(Uri fileUri, String fileName, String uploaderId, String uploaderName, UploadListener listener) {
-        String storagePath = "documents/" + uploaderId + "/" + fileName;
-        StorageReference fileRef = mStorageRef.child(storagePath);
+        // **MODIFIED: Now using SupabaseManager for file upload**
+        // The bucket name in Supabase is hardcoded here as "archivos". Change if needed.
+        String supabaseStoragePath = "archivos_eventos/" + uploaderId + "/" + fileName;
 
-        fileRef.putFile(fileUri)
-                .addOnSuccessListener(taskSnapshot -> {
-                    long sizeBytes = taskSnapshot.getMetadata() != null ? taskSnapshot.getMetadata().getSizeBytes() : -1;
+        SupabaseManager.uploadFile(context, fileUri, supabaseStoragePath, new SupabaseUploadListener() {
+            @Override
+            public void onSuccess(String publicUrl) {
+                // Keep track of the file size. In this case, we don't have it directly.
+                // We'll save the metadata in Firebase Realtime Database anyway.
+                saveFileMetadata(fileName, publicUrl, supabaseStoragePath, -1, uploaderId, new DataSaveListener() {
+                    @Override
+                    public void onSuccess() {
+                        triggerAuditNotification("upload", fileName, uploaderName);
+                        listener.onSuccess(publicUrl);
+                    }
 
-                    fileRef.getDownloadUrl().addOnSuccessListener(downloadUri -> {
-                        saveFileMetadata(fileName, downloadUri.toString(), storagePath, sizeBytes, uploaderId, new DataSaveListener() {
-                            @Override
-                            public void onSuccess() {
-                                triggerAuditNotification("upload", fileName, uploaderName);
-                                listener.onSuccess(downloadUri.toString());
-                            }
-
-                            @Override
-                            public void onFailure(String message) {
-                                listener.onFailure(message);
-                            }
-                        });
-                    }).addOnFailureListener(e -> {
-                        listener.onFailure(e.getMessage());
-                    });
-                })
-                .addOnFailureListener(e -> {
-                    listener.onFailure(e.getMessage());
-                })
-                .addOnProgressListener(snapshot -> {
-                    double progress = (100.0 * snapshot.getBytesTransferred()) / snapshot.getTotalByteCount();
-                    listener.onProgress(progress);
+                    @Override
+                    public void onFailure(String message) {
+                        listener.onFailure(message);
+                    }
                 });
+            }
+
+            @Override
+            public void onFailure(String message) {
+                listener.onFailure(message);
+            }
+        });
     }
 
 
@@ -581,5 +578,3 @@ public class DatabaseManager {
     }
 
 }
-
-

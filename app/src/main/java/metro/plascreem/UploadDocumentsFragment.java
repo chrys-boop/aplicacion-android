@@ -1,9 +1,10 @@
-
 package metro.plascreem;
 
 import android.content.Intent;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.OpenableColumns;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -34,14 +35,12 @@ public class UploadDocumentsFragment extends Fragment {
     private Uri selectedFileUri = null;
     private DatabaseManager databaseManager;
 
-
     public UploadDocumentsFragment() {}
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         binding = FragmentUploadDocumentsBinding.inflate(inflater, container, false);
-        // Correctly initialize DatabaseManager with the required context.
         databaseManager = new DatabaseManager(getContext());
         return binding.getRoot();
     }
@@ -65,9 +64,6 @@ public class UploadDocumentsFragment extends Fragment {
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
         intent.setType("*/*");
         intent.addCategory(Intent.CATEGORY_OPENABLE);
-
-        binding.btnSubirDocumento.setText("Seleccionar Archivo y Subir");
-
         try {
             startActivityForResult(
                     Intent.createChooser(intent, "Seleccionar Documento"),
@@ -76,6 +72,32 @@ public class UploadDocumentsFragment extends Fragment {
         } catch (android.content.ActivityNotFoundException ex) {
             Toast.makeText(getContext(), "Error: No se encontró una aplicación para seleccionar archivos.", Toast.LENGTH_LONG).show();
         }
+    }
+
+    // --- FUNCIÓN NUEVA Y CORREGIDA PARA OBTENER EL NOMBRE DEL ARCHIVO ---
+    private String getFileNameFromUri(Uri uri) {
+        if (getContext() == null) return null;
+        String fileName = null;
+        // La forma correcta de obtener el nombre de un archivo desde una URI de contenido
+        if (uri.getScheme().equals("content")) {
+            try (Cursor cursor = getContext().getContentResolver().query(uri, null, null, null, null)) {
+                if (cursor != null && cursor.moveToFirst()) {
+                    int nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                    if (nameIndex != -1) {
+                        fileName = cursor.getString(nameIndex);
+                    }
+                }
+            }
+        }
+        // Fallback por si no es una URI de contenido (aunque es raro)
+        if (fileName == null) {
+            fileName = uri.getPath();
+            int cut = fileName.lastIndexOf('/');
+            if (cut != -1) {
+                fileName = fileName.substring(cut + 1);
+            }
+        }
+        return fileName;
     }
 
     private void uploadFileToStorage(Uri fileUri) {
@@ -89,34 +111,27 @@ public class UploadDocumentsFragment extends Fragment {
             return;
         }
         String uploaderId = currentUser.getUid();
-        // Get the user's display name for the notification.
-        String uploaderName = currentUser.getDisplayName();
+        String uploaderName = currentUser.getDisplayName() != null && !currentUser.getDisplayName().isEmpty()
+                ? currentUser.getDisplayName()
+                : currentUser.getEmail();
         if (uploaderName == null || uploaderName.isEmpty()) {
-            // Use email as a fallback if the display name is not set.
-            uploaderName = currentUser.getEmail();
-            if (uploaderName == null || uploaderName.isEmpty()) {
-                uploaderName = "Usuario Desconocido"; // Final fallback.
-            }
+            uploaderName = "Usuario Desconocido";
         }
 
-        String fileName = selectedFileUri.getLastPathSegment();
+        // --- USO DE LA NUEVA FUNCIÓN ---
+        String fileName = getFileNameFromUri(fileUri);
         if (fileName == null) {
-            fileName = "unknown_file_" + System.currentTimeMillis();
+            fileName = "unknown_file_" + System.currentTimeMillis(); // Fallback si todo falla
         }
 
-        // AUDITORÍA: Final variables needed for the inner class
         final String finalUploaderName = uploaderName;
         final String finalFileName = fileName;
 
-        // Updated call to uploadFile, now including the uploader's name.
         databaseManager.uploadFile(fileUri, fileName, uploaderId, uploaderName, new DatabaseManager.UploadListener() {
             @Override
             public void onSuccess(String downloadUrl) {
                 Toast.makeText(getContext(), "Documento subido con éxito.", Toast.LENGTH_SHORT).show();
-
-                // AUDITORÍA: Llamar a la función de Netlify para notificar la subida.
                 sendAuditNotification(finalUploaderName, finalFileName, "Documento");
-
                 if (getParentFragmentManager() != null) {
                     getParentFragmentManager().popBackStack();
                 }
@@ -135,7 +150,6 @@ public class UploadDocumentsFragment extends Fragment {
         });
     }
 
-    // AUDITORÍA: Nuevo método para enviar la notificación de auditoría.
     private void sendAuditNotification(String uploaderName, String fileName, String fileType) {
         if (getContext() == null) {
             Log.e("AuditError", "Context is null, cannot send audit notification.");
@@ -143,7 +157,6 @@ public class UploadDocumentsFragment extends Fragment {
         }
 
         String auditUrl = "https://capacitacion-mrodante.netlify.app/.netlify/functions/send-audit-notification";
-
         JSONObject postData = new JSONObject();
         try {
             postData.put("userId", uploaderName);
@@ -158,8 +171,6 @@ public class UploadDocumentsFragment extends Fragment {
                 response -> Log.d("AuditSuccess", "Audit notification sent for " + fileName),
                 error -> Log.e("AuditError", "Failed to send audit notification", error)
         );
-
-        // Añadir la petición a la cola de Volley.
         Volley.newRequestQueue(getContext()).add(auditRequest);
     }
 
@@ -171,8 +182,9 @@ public class UploadDocumentsFragment extends Fragment {
             if (resultCode == RESULT_OK && data != null && data.getData() != null) {
                 selectedFileUri = data.getData();
 
-                String fileName = selectedFileUri.getLastPathSegment();
-                binding.tvFileStatus.setText("Archivo listo. Presione de nuevo para subir: " + fileName);
+                // --- USO DE LA NUEVA FUNCIÓN ---
+                String fileName = getFileNameFromUri(selectedFileUri);
+                binding.tvFileStatus.setText("Archivo listo: " + fileName);
                 binding.btnSubirDocumento.setText("Iniciar Subida a la Nube");
                 binding.btnSubirDocumento.setEnabled(true);
 

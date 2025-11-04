@@ -1,4 +1,3 @@
-
 package metro.plascreem;
 
 import android.app.Activity;
@@ -36,7 +35,6 @@ public class UploadMediaFragment extends Fragment {
     private String selectedFileName = null;
     private DatabaseManager databaseManager;
 
-    // ActivityResultLauncher for the file picker (modern method)
     private final ActivityResultLauncher<Intent> mediaPickerLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
             result -> {
@@ -44,12 +42,10 @@ public class UploadMediaFragment extends Fragment {
                     selectedFileUri = result.getData().getData();
                     selectedFileName = getFileNameFromUri(selectedFileUri);
 
-                    // Update UI with the selected file
                     binding.tvMediaStatus.setText("Listo para subir: " + selectedFileName);
                     binding.btnSubirMedia.setText("Iniciar Subida");
                     binding.btnSubirMedia.setEnabled(true);
                 } else {
-                    // Using the custom Toast
                     ToastUtils.showShortToast(getActivity(), "Selección de archivo cancelada.");
                     resetUploadState();
                 }
@@ -60,7 +56,6 @@ public class UploadMediaFragment extends Fragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         binding = FragmentUploadMediaBinding.inflate(inflater, container, false);
-        // Correctly initialize DatabaseManager with the required context.
         databaseManager = new DatabaseManager(getContext());
         return binding.getRoot();
     }
@@ -96,35 +91,26 @@ public class UploadMediaFragment extends Fragment {
             return;
         }
 
-        // Disable UI for upload
         binding.btnSubirMedia.setEnabled(false);
         binding.progressBar.setVisibility(View.VISIBLE);
 
         String uploaderId = currentUser.getUid();
-        // Get the user's display name for the notification.
         String uploaderName = currentUser.getDisplayName();
         if (uploaderName == null || uploaderName.isEmpty()) {
-            // Use email as a fallback if the display name is not set.
             uploaderName = currentUser.getEmail();
             if (uploaderName == null || uploaderName.isEmpty()) {
-                uploaderName = "Usuario Desconocido"; // Final fallback.
+                uploaderName = "Usuario Desconocido";
             }
         }
 
-        // AUDITORÍA: Final variables needed for the inner class
         final String finalUploaderName = uploaderName;
         final String finalFileName = selectedFileName;
 
-        // Updated call to uploadFile, now including the uploader's name.
         databaseManager.uploadFile(selectedFileUri, selectedFileName, uploaderId, uploaderName, new DatabaseManager.UploadListener() {
             @Override
             public void onSuccess(String downloadUrl) {
                 ToastUtils.showShortToast(getActivity(), "Archivo subido con éxito.");
-
-                // AUDITORÍA: Llamar a la función de Netlify para notificar la subida.
                 sendAuditNotification(finalUploaderName, finalFileName, "Media");
-
-                // Upload was successful, go back to the previous fragment (Calendar)
                 if (getParentFragmentManager() != null) {
                     getParentFragmentManager().popBackStack();
                 }
@@ -133,7 +119,7 @@ public class UploadMediaFragment extends Fragment {
             @Override
             public void onFailure(String message) {
                 ToastUtils.showLongToast(getActivity(), "Error al subir: " + message);
-                resetUploadState(); // Allow retry
+                resetUploadState();
             }
 
             @Override
@@ -144,7 +130,6 @@ public class UploadMediaFragment extends Fragment {
         });
     }
 
-    // AUDITORÍA: Nuevo método para enviar la notificación de auditoría.
     private void sendAuditNotification(String uploaderName, String fileName, String fileType) {
         if (getContext() == null) {
             Log.e("AuditError", "Context is null, cannot send audit notification.");
@@ -152,7 +137,6 @@ public class UploadMediaFragment extends Fragment {
         }
 
         String auditUrl = "https://capacitacion-mrodante.netlify.app/.netlify/functions/send-audit-notification";
-
         JSONObject postData = new JSONObject();
         try {
             postData.put("userId", uploaderName);
@@ -167,26 +151,30 @@ public class UploadMediaFragment extends Fragment {
                 response -> Log.d("AuditSuccess", "Audit notification sent for " + fileName),
                 error -> Log.e("AuditError", "Failed to send audit notification", error)
         );
-
-        // Añadir la petición a la cola de Volley.
         Volley.newRequestQueue(getContext()).add(auditRequest);
     }
 
-    // Helper function to get the file name robustly
+    // --- FUNCIÓN HELPER PARA OBTENER EL NOMBRE DEL ARCHIVO (VERSIÓN CORREGIDA) ---
     private String getFileNameFromUri(Uri uri) {
+        if (getContext() == null || uri == null) {
+            return "unknown_file";
+        }
         String result = null;
         if (uri.getScheme() != null && uri.getScheme().equals("content")) {
-            try (Cursor cursor = requireContext().getContentResolver().query(uri, null, null, null, null)) {
+            // Se envuelve el cursor en un try-catch para manejar excepciones de forma segura
+            try (Cursor cursor = getContext().getContentResolver().query(uri, null, null, null, null)) {
                 if (cursor != null && cursor.moveToFirst()) {
                     int nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
                     if (nameIndex != -1) {
                         result = cursor.getString(nameIndex);
                     }
                 }
+            } catch (Exception e) {
+                Log.e("UploadMediaFragment", "Failed to get file name from content resolver", e);
             }
         }
         if (result == null) {
-            result = uri.getLastPathSegment();
+            result = uri.getPath();
             if (result != null) {
                 int cut = result.lastIndexOf('/');
                 if (cut != -1) {
@@ -210,7 +198,7 @@ public class UploadMediaFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        binding = null; // Prevent memory leaks
+        binding = null;
     }
 }
 

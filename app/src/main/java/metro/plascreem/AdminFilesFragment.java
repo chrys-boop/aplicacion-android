@@ -34,12 +34,14 @@ import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.text.Normalizer;
+
 
 public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileActionListener {
 
     private static final String TAG = "AdminFilesFragment";
     private static final String DATABASE_PATH = "files"; // Ruta en Firebase Realtime DB
-    private static final String STORAGE_FOLDER = "plantillas"; // Carpeta en Supabase
+    private static final String STORAGE_FOLDER = "archivos_eventos"; // Carpeta en Supabase
 
     private Button btnSelectFile, btnUploadFile;
     private TextView tvFileNameStatus;
@@ -69,7 +71,6 @@ public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileAc
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_admin_files, container, false);
 
-        // Ya no se necesita Firebase Storage, solo la base de datos para metadatos
         databaseReference = FirebaseDatabase.getInstance("https://capacitacion-material-default-rtdb.firebaseio.com/").getReference(DATABASE_PATH);
 
         btnSelectFile = view.findViewById(R.id.btn_select_file);
@@ -84,7 +85,7 @@ public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileAc
         recyclerViewFiles.setAdapter(fileAdapter);
 
         btnSelectFile.setOnClickListener(v -> openFilePicker());
-        btnUploadFile.setOnClickListener(v -> uploadFileToSupabase()); // Cambiado a m\u00e9todo de Supabase
+        btnUploadFile.setOnClickListener(v -> uploadFileToSupabase());
 
         loadFilesFromDatabase();
 
@@ -98,7 +99,6 @@ public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileAc
         filePickerLauncher.launch(intent);
     }
 
-    // --- M\u00c9TODO DE SUBIDA ACTUALIZADO PARA USAR SUPABASE ---
     private void uploadFileToSupabase() {
         if (selectedFileUri == null || selectedFileName == null) {
             Toast.makeText(getContext(), "Por favor, seleccione un archivo primero", Toast.LENGTH_SHORT).show();
@@ -109,23 +109,25 @@ public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileAc
         btnUploadFile.setEnabled(false);
         tvFileNameStatus.setText("Subiendo " + selectedFileName + "...");
 
-        String storagePath = STORAGE_FOLDER + "/" + selectedFileName;
+        // Limpiar el nombre del archivo para que sea seguro para Supabase
+        String sanitizedFileName = sanitizeFileName(selectedFileName);
+        String storagePath = STORAGE_FOLDER + "/" + sanitizedFileName;
 
         SupabaseManager.uploadFile(getContext(), selectedFileUri, storagePath, new SupabaseUploadListener() {
             @Override
             public void onSuccess(String publicUrl) {
-                Toast.makeText(getContext(), "Archivo subido con \u00e9xito", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), "Archivo subido con éxito", Toast.LENGTH_SHORT).show();
 
                 String fileId = databaseReference.push().getKey();
 
-                // Creamos los metadatos con la informaci\u00f3n de Supabase
+                // Creamos los metadatos con el nombre original y la ruta sanitizada
                 FileMetadata metadata = new FileMetadata(
                         fileId,
-                        selectedFileName,
-                        publicUrl, // La URL p\u00fablica de Supabase
-                        storagePath, // La ruta de almacenamiento en Supabase
-                        null, // userId, no aplica para archivos de admin
-                        0,    // size, se puede a\u00f1adir luego si es necesario
+                        selectedFileName, // El nombre original para mostrar
+                        publicUrl,
+                        storagePath,      // La ruta con el nombre sanitizado
+                        null,
+                        0,
                         System.currentTimeMillis()
                 );
 
@@ -152,7 +154,7 @@ public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileAc
         selectedFileName = null;
         progressBarUpload.setVisibility(View.GONE);
         btnUploadFile.setEnabled(false);
-        tvFileNameStatus.setText("Ning\u00fan archivo seleccionado");
+        tvFileNameStatus.setText("Ningún archivo seleccionado");
     }
 
     private void loadFilesFromDatabase() {
@@ -182,7 +184,6 @@ public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileAc
 
     @Override
     public void onViewFile(FileMetadata file) {
-        // Esta funci\u00f3n ya funciona con cualquier URL p\u00fablica
         if (file.getDownloadUrl() == null || file.getDownloadUrl().isEmpty()) {
             Toast.makeText(getContext(), "URL del archivo no disponible.", Toast.LENGTH_SHORT).show();
             return;
@@ -191,13 +192,12 @@ public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileAc
         try {
             startActivity(intent);
         } catch (android.content.ActivityNotFoundException e) {
-            Toast.makeText(getContext(), "No se encontro una aplicaci\u00f3n para abrir este tipo de archivo.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), "No se encontro una aplicación para abrir este tipo de archivo.", Toast.LENGTH_SHORT).show();
         }
     }
 
     @Override
     public void onDownloadFile(FileMetadata file) {
-        // Esta funci\u00f3n ya funciona con cualquier URL p\u00fablica
         if (getContext() == null || file.getDownloadUrl() == null || file.getDownloadUrl().isEmpty()) {
             Toast.makeText(getContext(), "No se puede iniciar la descarga.", Toast.LENGTH_SHORT).show();
             return;
@@ -217,7 +217,6 @@ public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileAc
         }
     }
 
-    // --- M\u00c9TODO DE BORRADO ACTUALIZADO PARA USAR SUPABASE ---
     @Override
     public void onDeleteFile(FileMetadata file) {
         if (file.getFileId() == null || file.getStoragePath() == null || file.getStoragePath().isEmpty()) {
@@ -226,14 +225,12 @@ public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileAc
         }
 
         new AlertDialog.Builder(requireContext())
-                .setTitle("Confirmar Eliminaci\u00f3n")
-                .setMessage("\u00bfEst\u00e1s seguro de que quieres eliminar '" + file.getFileName() + "'?")
+                .setTitle("Confirmar Eliminación")
+                .setMessage("¿Estás seguro de que quieres eliminar '" + file.getFileName() + "'?")
                 .setPositiveButton("Eliminar", (dialog, which) -> {
-                    // PRIMERO: Borrar de Supabase Storage usando el path guardado
                     SupabaseManager.deleteFile(file.getStoragePath(), new SupabaseDeleteListener() {
                         @Override
                         public void onSuccess() {
-                            // SEGUNDO: Si se borra de Supabase, borrar el registro de Firebase DB
                             databaseReference.child(file.getFileId()).removeValue()
                                     .addOnSuccessListener(aVoid -> Toast.makeText(getContext(), "Archivo eliminado.", Toast.LENGTH_SHORT).show())
                                     .addOnFailureListener(e -> Toast.makeText(getContext(), "Error al eliminar de la base de datos.", Toast.LENGTH_SHORT).show());
@@ -265,5 +262,16 @@ public class AdminFilesFragment extends Fragment implements FileAdapter.OnFileAc
             result = uri.getLastPathSegment();
         }
         return result;
+    }
+
+    // Nuevo método para limpiar el nombre del archivo para que sea seguro para la URL
+    private String sanitizeFileName(String fileName) {
+        if (fileName == null) return "unknown_file_" + System.currentTimeMillis();
+        // Normaliza el texto para separar acentos de las letras
+        String normalized = Normalizer.normalize(fileName, Normalizer.Form.NFD);
+        // Elimina los caracteres de acentos
+        String noAccents = normalized.replaceAll("[\\p{InCombiningDiacriticalMarks}]", "");
+        // Reemplaza espacios con guiones bajos y elimina otros caracteres no válidos
+        return noAccents.replaceAll("\\s+", "_").replaceAll("[^a-zA-Z0-9._-]", "");
     }
 }

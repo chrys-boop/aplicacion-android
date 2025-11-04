@@ -12,11 +12,18 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
 import java.io.InputStream
 
-// Interfaces para los callbacks
+// --- INTERFACES PARA LOS CALLBACKS (Listeners) ---
 interface SupabaseUploadListener {
     fun onSuccess(publicUrl: String)
+    fun onFailure(message: String)
+}
+
+interface SupabaseDownloadListener {
+    fun onSuccess()
     fun onFailure(message: String)
 }
 
@@ -30,11 +37,10 @@ interface SupabaseListListener {
     fun onFailure(message: String)
 }
 
-
 object SupabaseManager {
 
-    private const val SUPABASE_URL = "https://wkvmaestrcocxncsoqgxx.supabase.co"
-    private const val SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indrdm1hZXN0cmNvY3huY3NvcWd4eCIsImlvyJleHAiOjIwMTI1ODYxODR9.B34b_gB11J3KTMso0_1t3b-3H222TzyVd_zrAxg6Ld0"
+    private const val SUPABASE_URL = "https://sxdejifprccilvdgsmhi.supabase.co"
+    private const val SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN4ZGVqaWZwcmNjaWx2ZGdzbWhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIxNzk2MjEsImV4cCI6MjA3Nzc1NTYyMX0.nadXZyHoLhx3H0AClvyJzrVcBOJaTv4f7DdaKGaVbb4"
 
     private val supabaseClient: SupabaseClient by lazy {
         createSupabaseClient(
@@ -47,15 +53,43 @@ object SupabaseManager {
         }
     }
 
-    // --- MÉTODO DE INICIALIZACIÓN PARA FORZAR LA CREACIÓN EN EL HILO PRINCIPAL ---
     @JvmStatic
     fun init() {
-        // Esta simple llamada fuerza la inicialización "lazy" del supabaseClient
         supabaseClient.storage
     }
 
-    // --- MÉTODOS PÚBLICOS CON @JvmStatic PARA JAVA ---
+    // --- FUNCIÓN DE DESCARGA CORREGIDA ---
+    @JvmStatic
+    fun downloadFile(bucketName: String, pathInBucket: String, destinationFile: File, listener: SupabaseDownloadListener) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                // CORRECCIÓN: Se usa `downloadPublic` que es la función correcta en la librería.
+                val fileBytes: ByteArray = supabaseClient.storage.from(bucketName).downloadPublic(pathInBucket)
 
+                // CORRECCIÓN: El `use` block maneja el `write` y cierra el stream automáticamente,
+                // resolviendo la ambigüedad.
+                FileOutputStream(destinationFile).use { outputStream ->
+                    outputStream.write(fileBytes)
+                }
+
+                withContext(Dispatchers.Main) { listener.onSuccess() }
+
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    e.printStackTrace()
+                    val errorMessage = e.message ?: "Error desconocido durante la descarga."
+                    // El error de "Not Found" en esta librería a veces viene en un mensaje genérico.
+                    if (errorMessage.contains("Body buffer is closed") || errorMessage.contains("Not Found")) {
+                        listener.onFailure("404: Archivo no encontrado.")
+                    } else {
+                        listener.onFailure(errorMessage)
+                    }
+                }
+            }
+        }
+    }
+
+    // --- FUNCIÓN DE SUBIDA (sin cambios, ya era correcta) ---
     @JvmStatic
     fun uploadFile(context: Context, fileUri: Uri, storagePath: String, listener: SupabaseUploadListener) {
         CoroutineScope(Dispatchers.IO).launch {
@@ -71,7 +105,7 @@ object SupabaseManager {
                 val bucketName = storagePath.substringBefore('/')
                 val pathInBucket = storagePath.substringAfter('/')
 
-                supabaseClient.storage.from(bucketName).upload(pathInBucket, fileBytes, upsert = true)
+                supabaseClient.storage.from(bucketName).upload(path = pathInBucket, data = fileBytes, upsert = true)
                 val publicUrl = supabaseClient.storage.from(bucketName).publicUrl(pathInBucket)
 
                 withContext(Dispatchers.Main) { listener.onSuccess(publicUrl) }
@@ -84,6 +118,7 @@ object SupabaseManager {
         }
     }
 
+    // --- OTRAS FUNCIONES (sin cambios) ---
     @JvmStatic
     fun deleteFile(storagePath: String, listener: SupabaseDeleteListener) {
         CoroutineScope(Dispatchers.IO).launch {

@@ -1,7 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
+    <!-- Configuración base que sigue las mejores prácticas de Android.
+         Permite todo el tráfico seguro (HTTPS) por defecto. -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- Configuración específica para permitir tráfico no encriptado (HTTP)
+         únicamente a localhost, lo cual es útil para el desarrollo y pruebas locales
+         sin comprometer la seguridad de las conexiones externas. -->
     <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">127.0.0.1</domain>
         <domain includeSubdomains="true">localhost</domain>
-        <domain includeSubdomains="true">wkvmaestrcocxncsoqgxx.supabase.co</domain>
     </domain-config>
 </network-security-config>

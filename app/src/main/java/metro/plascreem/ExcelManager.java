@@ -4,11 +4,6 @@ import android.content.Context;
 import android.net.Uri;
 import android.util.Log;
 
-import com.google.firebase.storage.FileDownloadTask;
-import com.google.firebase.storage.FirebaseStorage;
-import com.google.firebase.storage.StorageException;
-import com.google.firebase.storage.StorageReference;
-
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.Row;
@@ -26,31 +21,26 @@ import java.util.Map;
 public class ExcelManager {
 
     private static final String TAG = "ExcelManager";
-    // CORRECCIÓN: Usar el nombre de archivo que hemos estado referenciando
-    private static final String FILE_NAME = "datos_excel.xlsx";
+    // Apuntamos al archivo y bucket correctos en Supabase
+    private static final String BUCKET_NAME = "documentos-MR";
+    private static final String FILE_NAME = "abrir.xlsx";
     private final File localFile;
-    private final StorageReference storageReference;
+    private final Context context;
 
-    // Column mapping (Asegúrate de que coincida con tu estructura)
+    // --- ESTRUCTURA DE COLUMNAS DEFINIDA ---
     private static final int COL_EXPEDIENTE = 0;
     private static final int COL_NOMBRE_COMPLETO = 1;
-    private static final int COL_NOMBRE = 2;
-    private static final int COL_APELLIDO_PATERNO = 3;
-    private static final int COL_APELLIDO_MATERNO = 4;
-    private static final int COL_AREA = 5;
-    private static final int COL_CATEGORIA = 6;
-    private static final int COL_CARGO = 7;
-    private static final int COL_FECHA_INGRESO = 8;
-    private static final int COL_HORARIO_ENTRADA = 9;
-    private static final int COL_HORARIO_SALIDA = 10;
-    private static final int COL_TITULAR_TYPE = 11;
-    private static final int COL_ENLACE_ORIGEN = 12; // Añadido
-
+    private static final int COL_CATEGORIA = 2;
+    private static final int COL_AREA = 3;
+    private static final int COL_CARGO = 4;
+    private static final int COL_FECHA_INGRESO = 5;
+    private static final int COL_HORARIO_ENTRADA = 6;
+    private static final int COL_HORARIO_SALIDA = 7;
+    private static final int COL_TIPO_TITULAR = 8;
 
     public ExcelManager(Context context) {
-        localFile = new File(context.getCacheDir(), FILE_NAME);
-        // CORRECCIÓN: La ruta en Storage debe ser consistente
-        storageReference = FirebaseStorage.getInstance().getReference().child("documentos/" + FILE_NAME);
+        this.context = context;
+        this.localFile = new File(context.getCacheDir(), FILE_NAME);
     }
 
     public interface ExcelDataListener {
@@ -59,74 +49,63 @@ public class ExcelManager {
         void onError(String message);
     }
 
+    // --- LÓGICA DE BÚSQUEDA ---
     public void findUserByExpediente(String expediente, ExcelDataListener listener) {
-        storageReference.getFile(localFile).addOnSuccessListener(taskSnapshot -> {
-            try (FileInputStream fis = new FileInputStream(localFile);
-                 Workbook workbook = new XSSFWorkbook(fis)) {
+        // Usamos el SupabaseManager.kt (ahora corregido) para descargar el archivo
+        SupabaseManager.downloadFile(BUCKET_NAME, FILE_NAME, localFile, new SupabaseDownloadListener() {
+            @Override
+            public void onSuccess() {
+                Log.d(TAG, "Excel descargado por SupabaseManager. Leyendo...");
+                try (FileInputStream fis = new FileInputStream(localFile);
+                     Workbook workbook = new XSSFWorkbook(fis)) {
 
-                Sheet sheet = workbook.getSheetAt(0);
-                for (Row row : sheet) {
-                    if (row.getRowNum() == 0) continue; // Skip header
+                    Sheet sheet = workbook.getSheetAt(0);
+                    for (Row row : sheet) {
+                        if (row.getRowNum() == 0) continue; // Omitir cabecera
 
-                    Cell expedienteCell = row.getCell(COL_EXPEDIENTE);
-                    if (expedienteCell != null && getCellStringValue(expedienteCell).equalsIgnoreCase(expediente)) {
-                        listener.onDataFound(extractUserDataFromRow(row));
-                        return;
+                        Cell expedienteCell = row.getCell(COL_EXPEDIENTE);
+                        if (expedienteCell != null && getCellStringValue(expedienteCell).equalsIgnoreCase(expediente)) {
+                            listener.onDataFound(extractUserDataFromRow(row));
+                            return;
+                        }
                     }
+                    listener.onDataNotFound();
+
+                } catch (IOException e) {
+                    Log.e(TAG, "Error leyendo el archivo Excel local.", e);
+                    listener.onError("Error de lectura local: " + e.getMessage());
                 }
-                listener.onDataNotFound();
-            } catch (IOException e) {
-                Log.e(TAG, "Error reading Excel file.", e);
-                listener.onError(e.getMessage());
             }
-        }).addOnFailureListener(e -> {
-            Log.e(TAG, "Error downloading Excel file for findUserByExpediente.", e);
-            listener.onError(e.getMessage());
+
+            @Override
+            public void onFailure(String message) {
+                Log.e(TAG, "Fallo al descargar desde SupabaseManager: " + message);
+                if (message.contains("404")) {
+                    listener.onDataNotFound();
+                } else {
+                    listener.onError("Error de red/Supabase: " + message);
+                }
+            }
         });
     }
 
-    private Map<String, Object> extractUserDataFromRow(Row row) {
-        Map<String, Object> userData = new HashMap<>();
-        userData.put("numeroExpediente", getCellStringValue(row.getCell(COL_EXPEDIENTE)));
-        userData.put("nombreCompleto", getCellStringValue(row.getCell(COL_NOMBRE_COMPLETO)));
-        userData.put("nombre", getCellStringValue(row.getCell(COL_NOMBRE)));
-        userData.put("apellidoPaterno", getCellStringValue(row.getCell(COL_APELLIDO_PATERNO)));
-        userData.put("apellidoMaterno", getCellStringValue(row.getCell(COL_APELLIDO_MATERNO)));
-        userData.put("area", getCellStringValue(row.getCell(COL_AREA)));
-        userData.put("categoria", getCellStringValue(row.getCell(COL_CATEGORIA)));
-        userData.put("cargo", getCellStringValue(row.getCell(COL_CARGO)));
-        userData.put("fechaIngreso", getCellStringValue(row.getCell(COL_FECHA_INGRESO)));
-        userData.put("horarioEntrada", getCellStringValue(row.getCell(COL_HORARIO_ENTRADA)));
-        userData.put("horarioSalida", getCellStringValue(row.getCell(COL_HORARIO_SALIDA)));
-        userData.put("titular", getCellStringValue(row.getCell(COL_TITULAR_TYPE))); // Clave 'titular' que usa la app
-        userData.put("enlaceOrigen", getCellStringValue(row.getCell(COL_ENLACE_ORIGEN)));
-        return userData;
-    }
-
-    private String getCellStringValue(Cell cell) {
-        if (cell == null) return "";
-        cell.setCellType(CellType.STRING);
-        return cell.getStringCellValue();
-    }
-
-    // --- MÉTODO saveUserData CORREGIDO Y ROBUSTO ---
+    // --- LÓGICA DE GUARDADO ---
     public void saveUserData(Map<String, Object> userData, DatabaseManager.DataSaveListener listener) {
-        // Paso 1: Intentar descargar el archivo existente
-        storageReference.getFile(localFile).addOnSuccessListener(downloadTask -> {
-            // Éxito: El archivo existe y se descargó. Procedemos a modificarlo.
-            Log.d(TAG, "Excel file downloaded successfully. Proceeding to modify.");
-            modifyAndUploadWorkbook(userData, listener);
+        SupabaseManager.downloadFile(BUCKET_NAME, FILE_NAME, localFile, new SupabaseDownloadListener() {
+            @Override
+            public void onSuccess() {
+                Log.d(TAG, "Archivo existente descargado. Modificando...");
+                modifyAndUploadWorkbook(userData, listener);
+            }
 
-        }).addOnFailureListener(e -> {
-            // Falla: Comprobar por qué falló
-            if (e instanceof StorageException && ((StorageException) e).getErrorCode() == StorageException.ERROR_OBJECT_NOT_FOUND) {
-                // El archivo no existe. Es el primer guardado. Creamos uno nuevo.
-                Log.d(TAG, "Excel file does not exist. Creating a new one.");
-                createNewWorkbookAndUpload(userData, listener);
-            } else {
-                // Ocurrió un error de red o de otro tipo al descargar.
-                Log.e(TAG, "Error downloading Excel file before saving.", e);
-                listener.onFailure("Error de red al sincronizar: " + e.getMessage());
+            @Override
+            public void onFailure(String message) {
+                if (message.contains("404")) {
+                    Log.d(TAG, "El archivo no existe. Creando uno nuevo...");
+                    createNewWorkbookAndUpload(userData, listener);
+                } else {
+                    listener.onFailure("Error de sincronización: " + message);
+                }
             }
         });
     }
@@ -134,76 +113,94 @@ public class ExcelManager {
     private void modifyAndUploadWorkbook(Map<String, Object> userData, DatabaseManager.DataSaveListener listener) {
         try (FileInputStream fis = new FileInputStream(localFile);
              Workbook workbook = new XSSFWorkbook(fis)) {
-
             Sheet sheet = workbook.getSheetAt(0);
-            // Lógica para encontrar y actualizar la fila o crear una nueva
             updateSheetWithUserData(sheet, userData);
 
-            // Guardar los cambios en el archivo local
             try (FileOutputStream fos = new FileOutputStream(localFile)) {
                 workbook.write(fos);
             }
 
-            // Subir el archivo modificado
             uploadLocalFile(listener);
 
         } catch (IOException e) {
-            Log.e(TAG, "Error processing existing Excel file.", e);
-            listener.onFailure("Error al procesar datos: " + e.getMessage());
+            listener.onFailure("Error procesando Excel: " + e.getMessage());
         }
     }
 
     private void createNewWorkbookAndUpload(Map<String, Object> userData, DatabaseManager.DataSaveListener listener) {
         try (Workbook workbook = new XSSFWorkbook()) {
             Sheet sheet = workbook.createSheet("Usuarios");
-            createHeaderRow(sheet); // Crear la fila de cabecera
-
-            // Añadir la primera fila de datos
+            createHeaderRow(sheet);
             updateSheetWithUserData(sheet, userData);
 
-            // Guardar el nuevo workbook en el archivo local
             try (FileOutputStream fos = new FileOutputStream(localFile)) {
                 workbook.write(fos);
             }
 
-            // Subir el nuevo archivo
             uploadLocalFile(listener);
 
         } catch (IOException e) {
-            Log.e(TAG, "Error creating new Excel workbook.", e);
-            listener.onFailure("Error al crear archivo de datos: " + e.getMessage());
+            listener.onFailure("Error creando Excel: " + e.getMessage());
         }
     }
+
+    private void uploadLocalFile(DatabaseManager.DataSaveListener listener) {
+        Uri fileUri = Uri.fromFile(localFile);
+        String storagePath = BUCKET_NAME + "/" + FILE_NAME;
+
+        SupabaseManager.uploadFile(context, fileUri, storagePath, new SupabaseUploadListener() {
+            @Override
+            public void onSuccess(String publicUrl) {
+                Log.d(TAG, "Excel subido con éxito a: " + publicUrl);
+                listener.onSuccess();
+            }
+
+            @Override
+            public void onFailure(String message) {
+                Log.e(TAG, "Fallo al subir a Supabase: " + message);
+                listener.onFailure("Error al guardar en la nube: " + message);
+            }
+        });
+    }
+
+    // --- MÉTODOS DE AYUDA ---
 
     private void updateSheetWithUserData(Sheet sheet, Map<String, Object> userData) {
         String expediente = (String) userData.get("numeroExpediente");
         int rowIndex = findRowIndexByExpediente(sheet, expediente);
 
         Row row = (rowIndex != -1) ? sheet.getRow(rowIndex) : sheet.createRow(sheet.getLastRowNum() + 1);
-        if(row == null) { // Por si la fila existente está corrupta
-            row = sheet.createRow(sheet.getLastRowNum() + 1);
-        }
+        if(row == null) row = sheet.createRow(sheet.getLastRowNum() + 1);
 
         setCellValue(row, COL_EXPEDIENTE, (String) userData.get("numeroExpediente"));
         setCellValue(row, COL_NOMBRE_COMPLETO, (String) userData.get("nombreCompleto"));
-        setCellValue(row, COL_NOMBRE, (String) userData.get("nombre"));
-        setCellValue(row, COL_APELLIDO_PATERNO, (String) userData.get("apellidoPaterno"));
-        setCellValue(row, COL_APELLIDO_MATERNO, (String) userData.get("apellidoMaterno"));
-        setCellValue(row, COL_AREA, (String) userData.get("area"));
         setCellValue(row, COL_CATEGORIA, (String) userData.get("categoria"));
+        setCellValue(row, COL_AREA, (String) userData.get("area"));
         setCellValue(row, COL_CARGO, (String) userData.get("cargo"));
         setCellValue(row, COL_FECHA_INGRESO, (String) userData.get("fechaIngreso"));
         setCellValue(row, COL_HORARIO_ENTRADA, (String) userData.get("horarioEntrada"));
         setCellValue(row, COL_HORARIO_SALIDA, (String) userData.get("horarioSalida"));
-        setCellValue(row, COL_TITULAR_TYPE, (String) userData.get("titular"));
-        setCellValue(row, COL_ENLACE_ORIGEN, (String) userData.get("enlaceOrigen"));
+        setCellValue(row, COL_TIPO_TITULAR, (String) userData.get("titular"));
     }
 
-    private void uploadLocalFile(DatabaseManager.DataSaveListener listener) {
-        Uri fileUri = Uri.fromFile(localFile);
-        storageReference.putFile(fileUri)
-                .addOnSuccessListener(taskSnapshot -> listener.onSuccess())
-                .addOnFailureListener(e -> listener.onFailure("Error al subir archivo: " + e.getMessage()));
+    private Map<String, Object> extractUserDataFromRow(Row row) {
+        Map<String, Object> userData = new HashMap<>();
+        userData.put("numeroExpediente", getCellStringValue(row.getCell(COL_EXPEDIENTE)));
+        userData.put("nombreCompleto", getCellStringValue(row.getCell(COL_NOMBRE_COMPLETO)));
+        userData.put("categoria", getCellStringValue(row.getCell(COL_CATEGORIA)));
+        userData.put("area", getCellStringValue(row.getCell(COL_AREA)));
+        userData.put("cargo", getCellStringValue(row.getCell(COL_CARGO)));
+        userData.put("fechaIngreso", getCellStringValue(row.getCell(COL_FECHA_INGRESO)));
+        userData.put("horarioEntrada", getCellStringValue(row.getCell(COL_HORARIO_ENTRADA)));
+        userData.put("horarioSalida", getCellStringValue(row.getCell(COL_HORARIO_SALIDA)));
+        userData.put("titular", getCellStringValue(row.getCell(COL_TIPO_TITULAR)));
+        return userData;
+    }
+
+    private String getCellStringValue(Cell cell) {
+        if (cell == null) return "";
+        cell.setCellType(CellType.STRING);
+        return cell.getStringCellValue().trim();
     }
 
     private void setCellValue(Row row, int colIndex, String value) {
@@ -213,25 +210,21 @@ public class ExcelManager {
 
     private void createHeaderRow(Sheet sheet) {
         Row headerRow = sheet.createRow(0);
-        setCellValue(headerRow, COL_EXPEDIENTE, "Número de Expediente");
-        setCellValue(headerRow, COL_NOMBRE_COMPLETO, "Nombre Completo");
-        setCellValue(headerRow, COL_NOMBRE, "Nombre");
-        setCellValue(headerRow, COL_APELLIDO_PATERNO, "Apellido Paterno");
-        setCellValue(headerRow, COL_APELLIDO_MATERNO, "Apellido Materno");
-        setCellValue(headerRow, COL_AREA, "Área");
-        setCellValue(headerRow, COL_CATEGORIA, "Categoría");
-        setCellValue(headerRow, COL_CARGO, "Cargo");
-        setCellValue(headerRow, COL_FECHA_INGRESO, "Fecha de Ingreso");
-        setCellValue(headerRow, COL_HORARIO_ENTRADA, "Horario Entrada");
-        setCellValue(headerRow, COL_HORARIO_SALIDA, "Horario Salida");
-        setCellValue(headerRow, COL_TITULAR_TYPE, "Tipo de Titular");
-        setCellValue(headerRow, COL_ENLACE_ORIGEN, "Enlace Origen");
+        setCellValue(headerRow, COL_EXPEDIENTE, "expediente");
+        setCellValue(headerRow, COL_NOMBRE_COMPLETO, "nombre_completo");
+        setCellValue(headerRow, COL_CATEGORIA, "categoria");
+        setCellValue(headerRow, COL_AREA, "area");
+        setCellValue(headerRow, COL_CARGO, "cargo");
+        setCellValue(headerRow, COL_FECHA_INGRESO, "fecha_ingreso");
+        setCellValue(headerRow, COL_HORARIO_ENTRADA, "horario_entrada");
+        setCellValue(headerRow, COL_HORARIO_SALIDA, "horario_salida");
+        setCellValue(headerRow, COL_TIPO_TITULAR, "tipo_titular");
     }
 
     private int findRowIndexByExpediente(Sheet sheet, String expediente) {
-        if (expediente == null) return -1;
+        if (expediente == null || expediente.isEmpty()) return -1;
         for (Row row : sheet) {
-            if (row.getRowNum() == 0) continue; // Skip header
+            if (row.getRowNum() == 0) continue;
             Cell cell = row.getCell(COL_EXPEDIENTE);
             if (cell != null && getCellStringValue(cell).equalsIgnoreCase(expediente)) {
                 return row.getRowNum();
