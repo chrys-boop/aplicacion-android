@@ -16,15 +16,13 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        multiDexEnabled = true
-
         vectorDrawables {
             useSupportLibrary = true
         }
 
-        val fcmServerKey =
-            "\"BCIGKBSueN26-106y122fTCtA85RQQ7_-Jmy1LsLhXiBPeAtS-tpu4gMq-tkAv67594iUeQN0rNEhpxtDR6mRUE\""
-        buildConfigField("String", "FCM_SERVER_KEY", fcmServerKey)
+        // WORKAROUND: Claves hardcodeadas para evitar el problema de compilación.
+        // TODO: Mover estas claves de nuevo a local.properties después de arreglar el entorno de compilación (ej. invalidando cachés).
+        buildConfigField("String", "FCM_SERVER_KEY", "\"BCIGKBSueN26-106y122fTCtA85RQQ7_-Jmy1LsLhXiBPeAtS-tpu4gMq-tkAv67594iUeQN0rNEhpxtDR6mRUE\"")
     }
 
     buildTypes {
@@ -37,7 +35,6 @@ android {
         }
     }
 
-    // --- SOLUCI\u00d3N PARA DUPLICADOS META-INF ---
     packaging {
         resources {
             excludes.add("META-INF/versions/9/previous-compilation-data.bin")
@@ -61,6 +58,10 @@ android {
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.10"
     }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 dependencies {
@@ -76,20 +77,22 @@ dependencies {
 
     // Test
     testImplementation(libs.junit)
+    testImplementation("io.mockk:mockk:1.13.10")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
 
     // Compose
-    implementation("androidx.compose.ui:ui:1.5.4")
-    implementation("androidx.compose.material3:material3:1.1.2")
-    implementation("androidx.compose.ui:ui-tooling-preview:1.5.4")
-    implementation("androidx.activity:activity-compose:1.8.1")
+    implementation("androidx.compose.ui:ui:1.6.7")
+    implementation("androidx.compose.material3:material3:1.2.1")
+    implementation("androidx.compose.ui:ui-tooling-preview:1.6.7")
+    implementation("androidx.activity:activity-compose:1.9.0")
 
     // LiveData
-    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.6.2")
+    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.8.1")
 
     // Firebase
-    implementation(platform("com.google.firebase:firebase-bom:33.0.0"))
+    implementation(platform("com.google.firebase:firebase-bom:33.1.0"))
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-database-ktx")
     implementation("com.google.firebase:firebase-messaging-ktx")
@@ -101,10 +104,10 @@ dependencies {
     implementation("org.apache.poi:poi:5.2.3")
     implementation("org.apache.poi:poi-ooxml:5.2.3")
 
-    // --- INICIO: DEPENDENCIAS DE SUPABASE (SINTAXIS FINAL Y CORRECTA) ---
-    val supabase_version = "1.3.1"
-    val ktor_version = "2.3.4"
-    val coroutines_version = "1.7.3"
+    // Supabase
+    val supabase_version = "2.4.0"
+    val ktor_version = "2.3.11"
+    val coroutines_version = "1.8.1"
 
     implementation("io.github.jan-tennert.supabase:supabase-kt:$supabase_version")
     implementation("io.github.jan-tennert.supabase:gotrue-kt:$supabase_version")
@@ -112,5 +115,5 @@ dependencies {
     implementation("io.ktor:ktor-client-android:$ktor_version")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutines_version")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:$coroutines_version")
-    // --- FIN: DEPENDENCIAS DE SUPABASE ---
 }
+

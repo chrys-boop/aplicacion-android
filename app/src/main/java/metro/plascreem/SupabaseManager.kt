@@ -4,10 +4,8 @@ import android.content.Context
 import android.net.Uri
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.createSupabaseClient
-import io.github.jan.supabase.gotrue.GoTrue
 import io.github.jan.supabase.storage.Storage
 import io.github.jan.supabase.storage.storage
-import io.ktor.client.engine.android.Android
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -39,6 +37,7 @@ interface SupabaseListListener {
 
 object SupabaseManager {
 
+    // WORKAROUND FINAL: Claves hardcodeadas para resolver el problema de entorno de compilación.
     private const val SUPABASE_URL = "https://sxdejifprccilvdgsmhi.supabase.co"
     private const val SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN4ZGVqaWZwcmNjaWx2ZGdzbWhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIxNzk2MjEsImV4cCI6MjA3Nzc1NTYyMX0.nadXZyHoLhx3H0AClvyJzrVcBOJaTv4f7DdaKGaVbb4"
 
@@ -48,26 +47,16 @@ object SupabaseManager {
             supabaseKey = SUPABASE_ANON_KEY
         ) {
             install(Storage)
-            install(GoTrue)
-            httpEngine = Android.create {}
         }
     }
 
-    @JvmStatic
-    fun init() {
-        supabaseClient.storage
-    }
-
-    // --- FUNCIÓN DE DESCARGA CORREGIDA ---
+    // --- FUNCIÓN DE DESCARGA ---
     @JvmStatic
     fun downloadFile(bucketName: String, pathInBucket: String, destinationFile: File, listener: SupabaseDownloadListener) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // CORRECCIÓN: Se usa `downloadPublic` que es la función correcta en la librería.
                 val fileBytes: ByteArray = supabaseClient.storage.from(bucketName).downloadPublic(pathInBucket)
 
-                // CORRECCIÓN: El `use` block maneja el `write` y cierra el stream automáticamente,
-                // resolviendo la ambigüedad.
                 FileOutputStream(destinationFile).use { outputStream ->
                     outputStream.write(fileBytes)
                 }
@@ -78,7 +67,6 @@ object SupabaseManager {
                 withContext(Dispatchers.Main) {
                     e.printStackTrace()
                     val errorMessage = e.message ?: "Error desconocido durante la descarga."
-                    // El error de "Not Found" en esta librería a veces viene en un mensaje genérico.
                     if (errorMessage.contains("Body buffer is closed") || errorMessage.contains("Not Found")) {
                         listener.onFailure("404: Archivo no encontrado.")
                     } else {
@@ -89,7 +77,7 @@ object SupabaseManager {
         }
     }
 
-    // --- FUNCIÓN DE SUBIDA (sin cambios, ya era correcta) ---
+    // --- FUNCIÓN DE SUBIDA ---
     @JvmStatic
     fun uploadFile(context: Context, fileUri: Uri, storagePath: String, listener: SupabaseUploadListener) {
         CoroutineScope(Dispatchers.IO).launch {
@@ -118,7 +106,7 @@ object SupabaseManager {
         }
     }
 
-    // --- OTRAS FUNCIONES (sin cambios) ---
+    // --- OTRAS FUNCIONES ---
     @JvmStatic
     fun deleteFile(storagePath: String, listener: SupabaseDeleteListener) {
         CoroutineScope(Dispatchers.IO).launch {
@@ -157,4 +145,3 @@ object SupabaseManager {
         }
     }
 }
-
